@@ -1,3 +1,8 @@
-Write a function `is_balanced(s)` that checks whether all brackets `()[]{}`
-in the string are correctly nested and closed. Non-bracket characters are
-ignored. Empty string is balanced.
+# Задача: balanced brackets
+
+Напишите функцию `is_balanced(s)`, которая проверяет, что все скобки `()[]{}`
+в строке корректно вложены и закрыты.
+
+Символы, которые не являются скобками, игнорируются.
+
+Пустая строка считается сбалансированной.

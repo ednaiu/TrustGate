@@ -1,0 +1,40 @@
+name: trustgate
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./
+        with:
+          mode: scan
+          changed: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          base: ${{ github.event.pull_request.base.sha || 'HEAD' }}
+          project-tests: python -m pytest -q
+          html: trustgate-report.html
+          sarif: trustgate.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trustgate.sarif
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trustgate-report
+          path: |
+            trustgate-report.html
+            report.json
+            summary.md

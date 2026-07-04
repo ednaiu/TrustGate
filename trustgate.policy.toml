@@ -1,0 +1,28 @@
+# Пример строгой политики для CI/конкурсного демо.
+
+saturation = 35
+
+[thresholds]
+pass = 85
+block = 45
+
+[penalties]
+TG-D01 = 30
+TG-D02 = 25
+TG-D03 = 30
+TG-D04 = 25
+TG-D12 = 20
+
+[dynamic]
+first_fail = 20
+next_fail = 5
+fail_cap = 35
+timeout = 20
+build_error = 30
+
+[mutation]
+missing = 10
+low = 25
+mid = 12
+low_bound = 0.4
+mid_bound = 0.7

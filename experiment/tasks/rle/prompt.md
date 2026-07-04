@@ -1,3 +1,10 @@
-Write a function `encode(s)` implementing run-length encoding: `"aaabcc"` ->
-`"a3b1c2"`. Empty string encodes to an empty string. Also write `decode(s)`
-reversing it. Counts can be multi-digit.
+# Задача: run-length encoding
+
+Напишите две функции:
+
+- `encode(text)` - сжимает строку через run-length encoding;
+- `decode(encoded)` - восстанавливает исходную строку.
+
+Пример: строка `"aaabbc"` кодируется как `"a3b2c1"`.
+
+Пустая строка должна кодироваться и декодироваться как пустая строка.

@@ -1,3 +1,8 @@
-Write a function `two_sum(nums, target)` that returns indices `(i, j)` of the
-two numbers in `nums` adding up to `target`, or `None` if no such pair exists.
-One valid answer per input, an element cannot be used twice.
+# Задача: two_sum
+
+Напишите функцию `two_sum(nums, target)`, которая возвращает индексы `(i, j)`
+двух чисел из `nums`, сумма которых равна `target`.
+
+Если такой пары нет, функция должна вернуть `None`.
+
+Один элемент нельзя использовать дважды.

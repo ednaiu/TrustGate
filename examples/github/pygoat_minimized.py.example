@@ -1,0 +1,17 @@
+# Источник паттернов: PyGoat, MIT License
+# https://github.com/adeyosemanputra/pygoat
+#
+# Это минимизированное воспроизведение для TrustGate, а не копия файла PyGoat.
+
+import sqlite3
+import subprocess
+
+
+def unsafe_user_lookup(username):
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    return cur.execute(f"SELECT * FROM users WHERE name = '{username}'")
+
+
+def unsafe_ping(host):
+    return subprocess.run("ping -c 1 " + host, shell=True, capture_output=True)

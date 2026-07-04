@@ -1,22 +1,26 @@
-# Benchmark plan and current reproducible smoke test
+# Бенчмарк И План Оценки
 
-TrustGate should not rely on claims like "classic linters miss LLM defects"
-without data. This page separates the current reproducible smoke benchmark from
-the larger research benchmark that still has to be collected.
+TrustGate не должен опираться на голословное утверждение “обычные линтеры
+пропускают LLM-дефекты”. Поэтому в проекте есть воспроизводимый smoke benchmark
+и план большого benchmark.
 
-## Current versioned benchmark
+## Текущий Smoke-Бенчмарк
 
-Data: `experiment/static_benchmark_cases.json`  
-Runner: `python experiment/static_benchmark.py`
+Данные: `experiment/static_benchmark_cases.json`
+Запуск:
 
-The current corpus is intentionally small and curated. It checks that every
-static detector class has at least one reproducible example and that clean
-examples stay clean.
+```bash
+python experiment/static_benchmark.py
+```
 
-Expected current result:
+Корпус маленький и специально подобранный. Его задача - проверить, что каждый
+статический detector имеет воспроизводимый пример, а чистые примеры остаются
+чистыми.
 
-| metric | value |
-|--------|-------|
+Текущий ожидаемый результат:
+
+| метрика | значение |
+|---------|----------|
 | cases | 12 |
 | defective | 10 |
 | clean | 2 |
@@ -25,28 +29,29 @@ Expected current result:
 | static detector F1 | 1.000 |
 | expected detector recall | 1.000 |
 
-Important: this measures whether the static layer finds the intended defect. It
-does not claim that every finding must block a merge. TrustGate may return
-`REVIEW` for lower-severity defects by design.
+Важно: benchmark измеряет, нашел ли статический слой нужный дефект. Это не
+означает, что каждый finding обязан давать `BLOCK`: часть findings по design
+дают `REVIEW` или остаются в `PASS` как предупреждение.
 
-## Larger benchmark target
+## Большой Бенчмарк
 
-The larger benchmark should include at least 100 generated Python solutions:
+Следующий уровень - минимум 100 Python-решений:
 
-- multiple tasks from `experiment/tasks/`;
-- multiple LLM providers;
-- clean/defective labels from reference tests;
-- injected defects with known ground truth;
-- comparison with `ruff`, `flake8`, `bandit` and `semgrep`.
+- задачи из `experiment/tasks/`;
+- несколько LLM-провайдеров;
+- clean/defective labels по reference tests;
+- injected defects с ground truth;
+- сравнение с `ruff`, `flake8`, `bandit`, `semgrep`.
 
-Minimum report:
+Минимальная таблица:
 
-| tool | precision | recall | F1 | false positive rate |
-|------|-----------|--------|----|---------------------|
+| инструмент | precision | recall | F1 | false positive rate |
+|------------|-----------|--------|----|---------------------|
 | TrustGate | TBD | TBD | TBD | TBD |
 | ruff/flake8 | TBD | TBD | TBD | TBD |
 | bandit | TBD | TBD | TBD | TBD |
 | semgrep | TBD | TBD | TBD | TBD |
 
-This prevents overclaiming. The current repository proves the mechanism and a
-small reproducible corpus; the full research claim requires the larger table.
+Такое разделение не позволяет завышать claims: текущий benchmark доказывает
+механизм и регрессионную проверку, а сильное исследовательское утверждение
+потребует большого корпуса.

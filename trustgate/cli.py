@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import history
 from . import report
 from . import scan as project_scan
 from .config import Config
@@ -104,8 +105,26 @@ def scan(args) -> int:
         project_scan.dump_html(result, args.html)
     if args.sarif:
         project_scan.dump_sarif(result, args.sarif)
+    if args.save_history:
+        scan_id = history.save_scan(result, args.save_history)
+        print(f"trustgate: saved scan #{scan_id} to {args.save_history}", file=sys.stderr)
     print(project_scan.to_markdown(result))
     return EXIT[result["verdict"]]
+
+
+def history_cmd(args) -> int:
+    rows = history.list_scans(args.db, limit=args.limit)
+    if not rows:
+        print("No saved TrustGate scans.")
+        return 0
+    print("| id | verdict | score | findings | syntax errors | target |")
+    print("|----|---------|-------|----------|---------------|--------|")
+    for row in rows:
+        print(
+            f"| {row['id']} | {row['verdict']} | {row['score']} | "
+            f"{row['findings']} | {row['syntax_errors']} | {row['target']} |"
+        )
+    return 0
 
 
 def main(argv=None) -> int:
@@ -126,6 +145,10 @@ def main(argv=None) -> int:
     p_report.add_argument("report_file")
     p_report.add_argument("--html", help="write a self-contained HTML report")
 
+    p_history = sub.add_parser("history", help="show saved project scan history")
+    p_history.add_argument("--db", default="trustgate-history.sqlite")
+    p_history.add_argument("--limit", type=int, default=10)
+
     p_scan = sub.add_parser("scan", help="scan a project directory or git changes")
     p_scan.add_argument("path", nargs="?", default=".")
     p_scan.add_argument("--changed", action="store_true",
@@ -139,6 +162,7 @@ def main(argv=None) -> int:
     p_scan.add_argument("--json", help="write the full project report to this path")
     p_scan.add_argument("--html", help="write a self-contained HTML project report")
     p_scan.add_argument("--sarif", help="write SARIF for GitHub code scanning")
+    p_scan.add_argument("--save-history", help="append scan summary to a SQLite database")
 
     args = parser.parse_args(argv)
     try:
@@ -146,6 +170,8 @@ def main(argv=None) -> int:
             return check(args)
         if args.command == "report":
             return render(args)
+        if args.command == "history":
+            return history_cmd(args)
         return scan(args)
     except SystemExit:
         raise

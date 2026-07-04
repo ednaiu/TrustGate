@@ -9,6 +9,7 @@ trustgate-scan.json
 trustgate-scan.html
 trustgate.sarif
 trustgate-demo.html
+trustgate-history.sqlite
 experiment/raw/
 experiment/labeled/
 experiment/results/

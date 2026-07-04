@@ -1,32 +1,32 @@
-# LLM defect taxonomy
+# Таксономия Дефектов LLM-Кода
 
-This document explains why TrustGate detectors exist. The goal is not to
-replace linters, but to cover mistakes that often appear in generated code.
+TrustGate не заменяет линтеры. Он закрывает профиль ошибок, который часто
+появляется в AI-generated коде.
 
-| id | defect class | why it matters |
-|----|--------------|----------------|
-| TG-D01 | Hallucinated or typo import | LLMs can invent plausible package names or misspell popular ones. |
-| TG-D02 | Non-existent stdlib attribute | Generated code often calls an API that looks real but does not exist. |
-| TG-D03 | Dangerous execution | `eval`, `exec`, and `pickle.loads` are common unsafe shortcuts. |
-| TG-D04 | SQL string building | LLMs frequently use f-strings for SQL examples. |
-| TG-D05 | `shell=True` | Shell execution is risky when command text is dynamic. |
-| TG-D06 | `verify=False` | Disabling TLS validation is a typical "make it work" patch. |
-| TG-D07 | Weak hash for secrets | MD5/SHA1 may be acceptable for checksums, not for passwords or tokens. |
-| TG-D08 | Broad swallowed exception | Generated code may hide failures instead of handling them. |
-| TG-D09 | Stub left as implementation | LLM output sometimes contains `pass`, TODOs, or `NotImplementedError`. |
-| TG-D10 | Dead code | A sign of low-quality or mechanically stitched code. |
-| TG-D11 | Tautological assert | Tests can look present while proving nothing. |
-| TG-D12 | Suspicious dependency | LLMs can invent package names in `pyproject.toml` or `requirements.txt`. |
+| id | класс дефекта | почему важно |
+|----|---------------|--------------|
+| TG-D01 | выдуманный или typo import | LLM может придумать правдоподобное имя пакета |
+| TG-D02 | несуществующий stdlib/API attribute | вызов выглядит реалистично, но API нет |
+| TG-D03 | dangerous execution | `eval`, `exec`, `pickle.loads` часто появляются как быстрый shortcut |
+| TG-D04 | SQL string building | f-strings в SQL создают injection risk |
+| TG-D05 | `shell=True` | динамическая shell-команда опасна |
+| TG-D06 | `verify=False` | отключение TLS validation часто попадает в “make it work” patches |
+| TG-D07 | weak hash для secrets | MD5/SHA1 не подходят для паролей и токенов |
+| TG-D08 | broad swallowed exception | ошибка скрывается вместо обработки |
+| TG-D09 | stub вместо реализации | `pass`, TODO или `NotImplementedError` остаются в коде |
+| TG-D10 | dead code | признак механически собранного или невычитанного кода |
+| TG-D11 | tautological assert | тест выглядит как тест, но ничего не доказывает |
+| TG-D12 | suspicious dependency | LLM может придумать пакет в `pyproject.toml` или `requirements.txt` |
 
-## What TrustGate intentionally does not claim
+## Чего TrustGate Не Обещает
 
-- It does not prove semantic correctness.
-- It does not perform full dataflow or taint analysis yet.
-- It does not know every third-party package.
-- It does not replace human review for security-sensitive code.
+- не доказывает semantic correctness;
+- не делает полный taint/dataflow analysis;
+- не знает все пакеты PyPI;
+- не заменяет security review.
 
-## Why a separate tool is still useful
+## Почему Отдельный Инструмент Полезен
 
-Classic tools are strong, but they optimize for broad style, syntax and
-security checks. TrustGate is narrower: it asks whether a generated patch looks
-trustworthy enough to merge or whether it needs review.
+Обычные инструменты проверяют стиль, syntax, type hints и часть security issues.
+TrustGate спрашивает другое: “выглядит ли AI-generated patch достаточно
+надежным, чтобы пройти CI без ручного review?”

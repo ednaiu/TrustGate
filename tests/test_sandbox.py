@@ -79,5 +79,7 @@ def test_docker_cmd_isolation_flags():
     cmd = sandbox._docker_cmd("name1", "/tmp/x", ["true"])
     joined = " ".join(cmd)
     for flag in ("--network none", "--pids-limit 64", "--memory 512m",
-                 "--cpus 1", "/tmp/x:/work:ro"):
+                 "--cpus 1", "--cap-drop ALL", "--security-opt no-new-privileges",
+                 "--read-only", "--tmpfs /tmp:rw,nosuid,nodev,size=64m",
+                 "PYTHONDONTWRITEBYTECODE=1", "/tmp/x:/work:ro"):
         assert flag in joined

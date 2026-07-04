@@ -1,27 +1,40 @@
-# Changelog
+# История Изменений
 
-## 1.1.0 — unreleased
+## 1.2.0 - 2026-07-04
 
-- Added project/git scan workflow: `trustgate scan .` and `--changed`.
-- Added dependency manifest checks for `pyproject.toml` and `requirements*.txt`.
-- Added optional trusted project test command for repository scans.
-- Added SARIF export for GitHub code scanning.
-- Added self-contained HTML reports for single-file and project scans.
-- Added shared analysis engine for CLI and scan use cases.
-- Updated GitHub Action to support `mode: scan`.
-- Added benchmark, competition, defense, taxonomy and threat-model documentation.
-- Added demo examples that do not pollute project scans.
-- Added tests for project scan and HTML CLI output.
+- Добавлен SQLite history: `trustgate scan . --save-history`.
+- Добавлен готовый GitHub workflow с SARIF upload и HTML artifact.
+- Усилен Docker sandbox: `--cap-drop ALL`, `no-new-privileges`, read-only root,
+  tmpfs для `/tmp`.
+- Добавлены GitHub-derived examples с атрибуцией.
+- Добавлен пример строгой политики `trustgate.policy.toml`.
+- Добавлен документ `docs/scoring_rationale.md`.
+- Markdown-документация переведена на русский.
 
-## 1.0.0 — 2026-07-04
+## 1.1.0
 
-First release.
+- Добавлен project/git scan workflow: `trustgate scan .` и `--changed`.
+- Добавлены проверки dependency manifests для `pyproject.toml` и
+  `requirements*.txt`.
+- Добавлена optional trusted project test command.
+- Добавлен SARIF export для GitHub code scanning.
+- Добавлены self-contained HTML reports.
+- Добавлен общий analysis engine.
+- GitHub Action получил `mode: scan`.
+- Добавлены benchmark, competition, defense, taxonomy и threat-model docs.
+- Добавлены demo examples, которые не загрязняют project scan.
+- Добавлены тесты для project scan и HTML CLI output.
 
-- L1: 11 static detectors for LLM-specific defects (TG-D01..TG-D11)
-- L2: Docker sandbox test runner (no network, cpu/mem/pids limits)
-- L3: own AST mutator, 3 operators, green-baseline guard
-- Trust Score with explainable penalties, `weights.toml` config
-- CLI (`check`, `report`), JSON report + schema, GitHub Action
-- Experiment harness: corpus generation (2 LLM providers), defect
-  injection, metrics vs flake8+bandit baseline
-- 90+ tests, coverage gate 80%, CI matrix for Python 3.10-3.12
+## 1.0.0 - 2026-07-04
+
+Первый релиз.
+
+- L1: 11 статических детекторов `TG-D01..TG-D11`.
+- L2: Docker sandbox test runner.
+- L3: AST mutation testing.
+- Trust Score с объяснимыми penalties.
+- CLI: `check`, `report`.
+- JSON report и schema.
+- GitHub Action.
+- Experiment harness.
+- 90+ тестов и coverage gate.

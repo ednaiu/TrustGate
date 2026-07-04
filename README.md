@@ -1,81 +1,63 @@
 # TrustGate
 
-Author: Eva Iusupova ([github.com/iusupovaeva-debug](https://github.com/iusupovaeva-debug))
+Автор: Eva Iusupova ([github.com/iusupovaeva-debug](https://github.com/iusupovaeva-debug))
 
-Trust scoring for LLM-generated Python code. Takes a file (and optionally its
-tests), runs three layers of analysis and answers one question: **can this
-patch be merged?**
+TrustGate - это инструмент оценки доверия к Python-коду, который мог быть
+сгенерирован LLM. Он проверяет отдельный файл, весь репозиторий или измененные
+файлы в git и отвечает на практический вопрос: **можно ли мержить этот патч?**
 
-```
-$ trustgate check solution.py --tests test_solution.py
-## TrustGate: BLOCK (score 20/100)
-
-| line | detector | severity | message                                             | -pts |
-|------|----------|----------|-----------------------------------------------------|------|
-| 1    | TG-D01   | critical | import 'requsets' looks like a typo of 'requests'   | 25   |
-| 5    | TG-D03   | critical | eval() on non-literal data                          | 25   |
+```bash
+trustgate scan . --project-tests "python -m pytest -q" --sarif trustgate.sarif
 ```
 
-## Why
+Результат - объяснимый `Trust Score` от 0 до 100 и вердикт:
 
-LLM assistants produce code with a specific defect profile that classic
-linters were never designed for: hallucinated imports and APIs, plausible but
-wrong logic, silently swallowed errors, tests that assert nothing. TrustGate
-targets exactly that profile.
+- `PASS` - можно принимать;
+- `REVIEW` - нужен ручной review;
+- `BLOCK` - высокий риск, CI должен упасть.
 
-## Layers
+## Зачем
 
-|    | layer    | what it does                                                                                                                                                                                                |
-| -- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L1 | static   | 12 detectors (TG-D01..TG-D12): hallucinated imports/attributes, eval/exec, SQL string building, shell=True, verify=False, weak hashes for secrets, broad except, stubs, dead code, tautological asserts, suspicious dependencies |
-| L2 | dynamic  | runs the provided pytest suite in Docker: no network, 1 CPU, 512M RAM, 64 pids, read-only mount, 30s wall time                                                                                              |
-| L3 | mutation | own AST mutator (compare/boolop/int-constant operators). If mutants survive the tests, the tests don't test much                                                                                            |
+LLM-ассистенты часто пишут код с особым профилем дефектов: выдуманные импорты,
+несуществующие API, опасные quick fixes, слабые тесты, заглушки и зависимости,
+которые выглядят правдоподобно, но не существуют.
 
-Findings are aggregated into a **Trust Score** (0-100) with explainable
-per-finding penalties (`weights.toml`), then a verdict: PASS (>= 76),
-REVIEW (40-75), BLOCK (<= 39, or 3+ critical findings).
+Обычные линтеры полезны, но они не дают отдельного risk score для
+AI-generated патча. TrustGate добавляет такой слой поверх стандартного CI.
 
-The analyzed code is **never executed outside the sandbox** — L1 only parses.
-No Docker? The tool degrades to static-only analysis and marks the report
-`partial` (mutation analysis is disabled too, since it requires execution).
+## Слои Проверки
 
-## Install & use
+| слой | что делает |
+|------|------------|
+| L1 static | 12 детекторов `TG-D01..TG-D12`: hallucinated imports/API, `eval/exec`, SQL string building, `shell=True`, `verify=False`, weak hashes, broad except, stubs, dead code, tautological asserts, suspicious dependencies |
+| L2 dynamic | запускает pytest в Docker sandbox для single-file flow |
+| L3 mutation | генерирует AST-мутанты и проверяет, убивают ли их тесты |
+| repo scan | проверяет git/project files, dependency manifests, optional project tests, SARIF/HTML/JSON reports |
 
-```
+Код, который анализируется статически, не импортируется. Если выполняются тесты,
+они запускаются только явно: single-file через Docker sandbox или project tests
+через доверенную команду CI.
+
+## Установка И Запуск
+
+```bash
 pip install -e ".[dev]"
+
 trustgate check solution.py --tests test_solution.py --json report.json
 trustgate check solution.py --no-sandbox --html report.html
+
 trustgate scan . --json project-report.json
 trustgate scan . --changed --base origin/main
-trustgate scan . --project-tests "python -m pytest -q" --sarif trustgate.sarif
-trustgate report report.json        # re-render a saved report
-```
-
-Exit codes: 0 PASS, 1 REVIEW, 2 BLOCK, 3 bad input, 4 internal error.
-
-## Project / git workflow
-
-For real projects TrustGate is meant to run from the repository, not from a
-copy-paste form:
-
-```
-trustgate scan .                         # scan tracked Python files
-trustgate scan . --changed --base HEAD   # scan changed + untracked Python files
-trustgate scan . --html trustgate.html   # portfolio/CI-friendly report
-trustgate scan . --sarif trustgate.sarif # GitHub code scanning format
-```
-
-`scan` runs static code and dependency-manifest checks by default. In trusted CI
-it can also run a project test command:
-
-```
 trustgate scan . --project-tests "python -m pytest -q"
+trustgate scan . --sarif trustgate.sarif --html trustgate.html
+
+trustgate history --db trustgate-history.sqlite
+trustgate report report.json
 ```
 
-The command is explicit on purpose: TrustGate should not silently execute
-arbitrary project commands from an untrusted repository.
+Коды выхода: `0 PASS`, `1 REVIEW`, `2 BLOCK`, `3 bad input`, `4 internal error`.
 
-GitHub Action usage:
+## GitHub Action
 
 ```yaml
 - uses: ednaiu/TrustGate@v1
@@ -83,35 +65,52 @@ GitHub Action usage:
     mode: scan
     changed: "true"
     base: ${{ github.event.pull_request.base.sha }}
+    project-tests: python -m pytest -q
     sarif: trustgate.sarif
+    html: trustgate-report.html
 ```
 
-## Status
+В репозитории также есть готовый workflow:
+`.github/workflows/trustgate.yml`. Он генерирует SARIF, HTML и JSON-отчеты и
+загружает SARIF в GitHub code scanning.
 
-- [X] L1 static layer, scoring, CLI, JSON report (schema in `schemas/`)
-- [X] L2 sandbox runner (needs Docker; degrades gracefully without it)
-- [X] L3 mutation analysis with a green-baseline guard
-- [X] GitHub Action (`action.yml`): BLOCK fails the job, REVIEW passes with a summary
-- [X] Project/git scan mode (`trustgate scan .`, `--changed`, dependency manifests)
-- [X] Self-contained HTML reports for portfolio and CI artifacts
-- [X] SARIF export for GitHub code scanning integration
-- [X] Versioned smoke benchmark (`experiment/static_benchmark.py`)
-- [X] Experiment harness (`experiment/`): corpus generation for 2 LLM providers,
-  seeded defect injection, metrics vs flake8+bandit baseline
+## Проверка И Демо
 
-Running the full experiment needs Docker and API keys
-(`OPENAI_API_KEY`, `GIGACHAT_TOKEN`): `make experiment`.
+```bash
+make test
+make scan
+make benchmark
+make demo-report
+```
 
-Competition notes and development plan are in `docs/competition_ru.md`.
-Benchmark notes are in `docs/benchmark.md`; defense notes are in
-`docs/defense_questions_ru.md`.
+Примеры лежат в `examples/`. Файлы называются `*.py.example`, чтобы обычный
+`trustgate scan .` не считал демонстрационные уязвимости кодом самого проекта.
 
-## Limitations
+## Статус
 
-- Python only.
-- TG-D01 knows stdlib, the local environment and a bundled top-packages list;
-  a rare legitimate package is reported as "unknown" (major), not critical.
-- TG-D02 checks attributes only for a whitelist of stdlib modules; dynamic
-  `getattr` access is out of scope.
-- Mutation analysis needs a green test baseline: if the original tests already
-  fail, L3 is skipped (`red_baseline`) instead of producing a garbage score.
+- [x] 12 статических детекторов `TG-D01..TG-D12`;
+- [x] Docker sandbox для single-file pytest;
+- [x] mutation testing для single-file flow;
+- [x] project/git scan: `trustgate scan .`, `--changed`;
+- [x] dependency manifest scan для `pyproject.toml` и `requirements*.txt`;
+- [x] optional project tests: `--project-tests`;
+- [x] JSON, HTML и SARIF reports;
+- [x] SQLite history: `--save-history`;
+- [x] GitHub Action и SARIF upload workflow;
+- [x] воспроизводимый smoke benchmark.
+
+## Документация
+
+- `docs/architecture.md` - архитектура;
+- `docs/benchmark.md` - benchmark и план расширения корпуса;
+- `docs/scoring_rationale.md` - обоснование score;
+- `docs/threat_model.md` - модель угроз;
+- `docs/defense_questions_ru.md` - вопросы для защиты;
+- `docs/competition_ru.md` - описание для ITMO STARS.
+
+## Ограничения
+
+- Полная поддержка сейчас только для Python.
+- Project-level mutation testing еще не реализован.
+- Большой benchmark на 100+ LLM-решений остается следующим этапом.
+- Некоторые проверки эвристические, поэтому возможны false positives.
