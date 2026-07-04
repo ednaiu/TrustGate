@@ -5,15 +5,36 @@ branding:
   color: red
 
 inputs:
+  mode:
+    description: check a single file or scan a project
+    required: false
+    default: scan
   file:
     description: Python file to analyze
-    required: true
+    required: false
+    default: ""
+  path:
+    description: Project directory to scan
+    required: false
+    default: "."
   tests:
     description: Optional pytest file for the dynamic layer
     required: false
     default: ""
+  changed:
+    description: Scan changed and untracked Python files only
+    required: false
+    default: "false"
+  base:
+    description: Git base ref for changed-file scans
+    required: false
+    default: HEAD
   config:
     description: Optional weights.toml
+    required: false
+    default: ""
+  html:
+    description: Optional HTML report output path
     required: false
     default: ""
 
@@ -37,9 +58,15 @@ runs:
       shell: bash
       run: |
         set +e
-        args=(check "${{ inputs.file }}" --json report.json)
-        [ -n "${{ inputs.tests }}" ] && args+=(--tests "${{ inputs.tests }}")
+        if [ "${{ inputs.mode }}" = "check" ]; then
+          args=(check "${{ inputs.file }}" --json report.json)
+          [ -n "${{ inputs.tests }}" ] && args+=(--tests "${{ inputs.tests }}")
+        else
+          args=(scan "${{ inputs.path }}" --json report.json)
+          [ "${{ inputs.changed }}" = "true" ] && args+=(--changed --base "${{ inputs.base }}")
+        fi
         [ -n "${{ inputs.config }}" ] && args+=(--config "${{ inputs.config }}")
+        [ -n "${{ inputs.html }}" ] && args+=(--html "${{ inputs.html }}")
         trustgate "${args[@]}" > summary.md
         rc=$?
         cat summary.md >> "$GITHUB_STEP_SUMMARY"

@@ -1,3 +1,4 @@
+
 # Architecture
 
 ```
@@ -8,6 +9,13 @@ solution.py (+ tests)  -->  trustgate check
         |-- L3  mutation.evaluate         own AST mutator, needs green L2 baseline
         |
         '-- scoring.aggregate  ->  report.build  ->  markdown + report.json
+
+git repo / project dir  -->  trustgate scan
+        |
+        |-- discover Python files from git ls-files / git diff / directory walk
+        |-- run L1 static analysis per file
+        |-- aggregate findings once for the whole project
+        '-- markdown + JSON + optional HTML project report
 ```
 
 ## Modules
@@ -25,6 +33,10 @@ solution.py (+ tests)  -->  trustgate check
   (TG-D01..04) never saturate, three criticals force BLOCK.
 - `cli.py` — wiring plus the degradation policy: no Docker means static-only
   analysis, `partial: true`, and mutation disabled (it executes code).
+- `engine.py` — shared single-file analysis pipeline used by `check` and
+  project scan internals.
+- `scan.py` — repository/project workflow: discover Python files, scan all or
+  changed files, aggregate a project-level verdict.
 
 ## Invariants worth keeping
 
@@ -34,3 +46,5 @@ solution.py (+ tests)  -->  trustgate check
 3. Two runs on the same input produce identical reports (fixed seeds).
 4. Exit codes: 0 PASS, 1 REVIEW, 2 BLOCK, 3 bad input, 4 internal —
    argparse usage errors are remapped from 2 to 3.
+5. Project scan is static-only in v1.0. It should not pretend that existing
+   project tests were executed in the single-file sandbox.

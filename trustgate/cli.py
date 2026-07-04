@@ -2,11 +2,12 @@ import argparse
 import ast
 import json
 import sys
-import time
 from pathlib import Path
 
-from . import detectors, mutation, report, sandbox, scoring
+from . import report
+from . import scan as project_scan
 from .config import Config
+from .engine import analyze_source
 
 EXIT = {"PASS": 0, "REVIEW": 1, "BLOCK": 2}
 EXIT_INPUT_ERROR = 3
@@ -50,55 +51,22 @@ def check(args) -> int:
 
     cfg = Config(Path(args.config)) if args.config else Config()
 
-    timing = {}
-    t0 = time.monotonic()
-    findings = detectors.run_static(source)
-    timing["static"] = int((time.monotonic() - t0) * 1000)
-
-    use_sandbox = not args.no_sandbox
-    if use_sandbox and not sandbox.available():
-        print("trustgate: docker unavailable, falling back to --no-sandbox", file=sys.stderr)
-        use_sandbox = False
-    # no sandbox means we must not execute mutants either (NS-9)
-    use_mutation = use_sandbox and not args.no_mutation
-
-    dynamic = None
-    if use_sandbox and tests is not None:
-        if sandbox.ensure_image():
-            t0 = time.monotonic()
-            dynamic = sandbox.run_tests(source, tests)
-            timing["dynamic"] = int((time.monotonic() - t0) * 1000)
-        else:
-            print("trustgate: cannot build runner image, skipping sandbox", file=sys.stderr)
-            use_sandbox = use_mutation = False
-
-    mut = None
-    if use_mutation:
-        if tests is None:
-            mut = {"ran": False, "reason": "no_tests"}
-        elif dynamic and dynamic.get("ran"):
-            baseline_green = not (dynamic.get("tests_failed") or dynamic.get("build_error")
-                                  or dynamic.get("timeout"))
-            if baseline_green:
-                t0 = time.monotonic()
-                mut = mutation.evaluate(source, tests, sandbox.run_tests)
-                timing["mutation"] = int((time.monotonic() - t0) * 1000)
-            else:
-                # red baseline kills every mutant for free, the score would be garbage
-                mut = {"ran": False, "reason": "red_baseline"}
-
-    if dynamic is None:
-        dynamic = {"ran": False, "reason": "no_tests" if tests is None else "disabled"}
-
-    partial = args.no_sandbox or args.no_mutation or not use_sandbox
-    raw, score, verdict = scoring.aggregate(findings, dynamic, mut, cfg)
-    result = report.build(path, raw, score, verdict, partial,
-                          findings, dynamic, mut, timing)
+    result = analyze_source(
+        source,
+        str(path),
+        tests=tests,
+        cfg=cfg,
+        no_sandbox=args.no_sandbox,
+        no_mutation=args.no_mutation,
+        warn=lambda message: print(message, file=sys.stderr),
+    )
 
     if args.json:
         report.dump(result, args.json)
+    if args.html:
+        report.dump_html(result, args.html)
     print(report.to_markdown(result))
-    return EXIT[verdict]
+    return EXIT[result["verdict"]]
 
 
 def render(args) -> int:
@@ -109,8 +77,31 @@ def render(args) -> int:
         data = json.loads(_read(path))
     except json.JSONDecodeError:
         _fail_input(f"not a valid trustgate report: {path}")
+    if args.html:
+        report.dump_html(data, args.html)
     print(report.to_markdown(data))
     return 0
+
+
+def scan(args) -> int:
+    root = Path(args.path)
+    if not root.is_dir():
+        _fail_input(f"directory not found: {root}")
+    cfg = Config(Path(args.config)) if args.config else Config()
+    result = project_scan.scan_project(
+        root,
+        changed=args.changed,
+        base=args.base,
+        cfg=cfg,
+        warn=lambda message: print(message, file=sys.stderr),
+    )
+
+    if args.json:
+        project_scan.dump(result, args.json)
+    if args.html:
+        project_scan.dump_html(result, args.html)
+    print(project_scan.to_markdown(result))
+    return EXIT[result["verdict"]]
 
 
 def main(argv=None) -> int:
@@ -123,17 +114,31 @@ def main(argv=None) -> int:
     p_check.add_argument("--tests", help="pytest file for the dynamic layer")
     p_check.add_argument("--config", help="weights.toml with custom penalties")
     p_check.add_argument("--json", help="write the full report to this path")
+    p_check.add_argument("--html", help="write a self-contained HTML report")
     p_check.add_argument("--no-sandbox", action="store_true")
     p_check.add_argument("--no-mutation", action="store_true")
 
     p_report = sub.add_parser("report", help="render a saved JSON report")
     p_report.add_argument("report_file")
+    p_report.add_argument("--html", help="write a self-contained HTML report")
+
+    p_scan = sub.add_parser("scan", help="scan a project directory or git changes")
+    p_scan.add_argument("path", nargs="?", default=".")
+    p_scan.add_argument("--changed", action="store_true",
+                        help="scan changed and untracked Python files only")
+    p_scan.add_argument("--base", default="HEAD",
+                        help="git base for --changed, default: HEAD")
+    p_scan.add_argument("--config", help="weights.toml with custom penalties")
+    p_scan.add_argument("--json", help="write the full project report to this path")
+    p_scan.add_argument("--html", help="write a self-contained HTML project report")
 
     args = parser.parse_args(argv)
     try:
         if args.command == "check":
             return check(args)
-        return render(args)
+        if args.command == "report":
+            return render(args)
+        return scan(args)
     except SystemExit:
         raise
     except Exception as e:  # anything unexpected is exit 4, not a traceback

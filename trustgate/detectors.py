@@ -3,6 +3,9 @@
 Analyzed code is never executed here (only parsed) -- see NFR-3 in the spec.
 """
 import ast
+import io
+import re
+import tokenize
 
 from .findings import Finding
 from .known_packages import closest_popular, is_known
@@ -15,6 +18,7 @@ ATTR_CHECK_MODULES = {
 }
 
 SECRET_WORDS = ("password", "passwd", "token", "secret", "api_key", "apikey")
+IGNORE_RE = re.compile(r"\bTG-D\d{2}\b", re.IGNORECASE)
 
 
 def _dotted_name(node):
@@ -26,6 +30,30 @@ def _dotted_name(node):
         parts.append(node.id)
         return ".".join(reversed(parts))
     return None
+
+
+def _comments(source):
+    try:
+        yield from (
+            tok for tok in tokenize.generate_tokens(io.StringIO(source).readline)
+            if tok.type == tokenize.COMMENT
+        )
+    except tokenize.TokenError:
+        return
+
+
+def _ignored_detectors(source):
+    ignores = {}
+    marker = "trustgate: ignore"
+    for tok in _comments(source):
+        text = tok.string.lstrip("#").strip()
+        lower = text.lower()
+        if marker not in lower:
+            continue
+        after = text[lower.index(marker) + len(marker):]
+        detectors = {m.group(0).upper() for m in IGNORE_RE.finditer(after)}
+        ignores.setdefault(tok.start[0], set()).update(detectors or {"*"})
+    return ignores
 
 
 def check_imports(tree, source):  # TG-D01
@@ -251,10 +279,9 @@ def check_stubs(tree, source):  # TG-D09
         if all(is_stub_stmt(s) for s in body):
             out.append(Finding("TG-D09", "major", node.lineno,
                                f"function '{node.name}' is a stub, not an implementation"))
-    for i, line in enumerate(source.splitlines(), 1):
-        stripped = line.split("#", 1)
-        if len(stripped) == 2 and any(m in stripped[1] for m in ("TODO", "FIXME")):
-            out.append(Finding("TG-D09", "minor", i, "TODO/FIXME marker left in code"))
+    for tok in _comments(source):
+        if any(m in tok.string for m in ("TODO", "FIXME")):
+            out.append(Finding("TG-D09", "minor", tok.start[0], "TODO/FIXME marker left in code"))
     return out
 
 
@@ -313,8 +340,14 @@ DETECTORS = [
 
 def run_static(source: str) -> list[Finding]:
     tree = ast.parse(source)
+    ignored = _ignored_detectors(source)
     findings = []
     for det in DETECTORS:
         findings.extend(det(tree, source))
+    findings = [
+        f for f in findings
+        if "*" not in ignored.get(f.line, set())
+        and f.detector not in ignored.get(f.line, set())
+    ]
     findings.sort(key=lambda f: (f.line, f.detector))
     return findings

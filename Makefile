@@ -1,10 +1,16 @@
-.PHONY: test coverage experiment demo
+.PHONY: test coverage scan demo-report experiment demo
 
 test:
 	pytest -q
 
 coverage:
 	pytest --cov=trustgate --cov-fail-under=80 -q
+
+scan:
+	trustgate scan . --json trustgate-scan.json --html trustgate-scan.html
+
+demo-report:
+	trustgate check examples/block_solution.py.example --no-sandbox --html trustgate-demo.html
 
 demo:
 	@printf 'import requsets\ndef get(url):\n    return eval(url)\n' > /tmp/tg_demo.py

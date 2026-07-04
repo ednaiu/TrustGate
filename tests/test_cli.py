@@ -96,6 +96,26 @@ def test_render_saved_report(tmp_path, capsys):
     assert "TrustGate" in capsys.readouterr().out
 
 
+def test_check_writes_html_report(tmp_path):
+    f = tmp_path / "solution.py"
+    f.write_text(CLEAN)
+    html = tmp_path / "report.html"
+    code = main(["check", str(f), "--no-sandbox", "--html", str(html)])
+    assert code == 0
+    assert "TrustGate" in html.read_text()
+
+
+def test_scan_project_from_cli(tmp_path, capsys):
+    (tmp_path / "bad.py").write_text("import requsets\n")
+    out = tmp_path / "scan.json"
+    code = main(["scan", str(tmp_path), "--json", str(out)])
+    assert code == 1
+    assert "TrustGate scan" in capsys.readouterr().out
+    rep = json.loads(out.read_text())
+    assert rep["summary"]["files_scanned"] == 1
+    assert rep["findings"][0]["file"] == "bad.py"
+
+
 def test_determinism(tmp_path):
     _, first = run(tmp_path, BAD)
     _, second = run(tmp_path, BAD)

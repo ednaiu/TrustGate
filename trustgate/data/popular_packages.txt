@@ -66,6 +66,7 @@ fabric
 pyyaml
 yaml
 toml
+tomli
 ujson
 orjson
 simplejson

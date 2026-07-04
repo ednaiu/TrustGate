@@ -1,4 +1,4 @@
-from solution import decode, encode
+from solution import decode, encode  # trustgate: ignore TG-D01
 
 
 def test_encode():

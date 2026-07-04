@@ -1,0 +1,9 @@
+import requsets
+
+
+def load_config(raw):
+    return eval(raw)
+
+
+def fetch(url):
+    return requsets.get(url, verify=False).json()

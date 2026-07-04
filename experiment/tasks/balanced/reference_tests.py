@@ -1,4 +1,4 @@
-from solution import is_balanced
+from solution import is_balanced  # trustgate: ignore TG-D01
 
 
 def test_balanced():

@@ -84,3 +84,13 @@ def test_findings_sorted_by_line():
     src = "def f():\n    pass\n\neval(x)\n"
     lines = [f.line for f in run_static(src)]
     assert lines == sorted(lines)
+
+
+def test_inline_ignore_suppresses_one_detector():
+    src = "assert f(x) == f(x)  # trustgate: ignore TG-D11\n"
+    assert not run_static(src)
+
+
+def test_todo_inside_string_is_not_comment():
+    src = 'template = "# TODO generated sample\\n"\n'
+    assert not [f for f in run_static(src) if f.detector == "TG-D09"]

@@ -1,4 +1,4 @@
-from solution import two_sum
+from solution import two_sum  # trustgate: ignore TG-D01
 
 
 def test_basic():

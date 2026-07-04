@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — unreleased
+
+- Added project/git scan workflow: `trustgate scan .` and `--changed`.
+- Added self-contained HTML reports for single-file and project scans.
+- Added shared analysis engine for CLI and scan use cases.
+- Updated GitHub Action to support `mode: scan`.
+- Added competition, taxonomy and threat-model documentation.
+- Added demo examples that do not pollute project scans.
+- Added tests for project scan and HTML CLI output.
+
 ## 1.0.0 — 2026-07-04
 
 First release.
