@@ -27,7 +27,7 @@ targets exactly that profile.
 
 |    | layer    | what it does                                                                                                                                                                                                |
 | -- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L1 | static   | 11 AST detectors (TG-D01..TG-D11): hallucinated imports/attributes, eval/exec, SQL string building, shell=True, verify=False, weak hashes for secrets, broad except, stubs, dead code, tautological asserts |
+| L1 | static   | 12 detectors (TG-D01..TG-D12): hallucinated imports/attributes, eval/exec, SQL string building, shell=True, verify=False, weak hashes for secrets, broad except, stubs, dead code, tautological asserts, suspicious dependencies |
 | L2 | dynamic  | runs the provided pytest suite in Docker: no network, 1 CPU, 512M RAM, 64 pids, read-only mount, 30s wall time                                                                                              |
 | L3 | mutation | own AST mutator (compare/boolop/int-constant operators). If mutants survive the tests, the tests don't test much                                                                                            |
 
@@ -47,6 +47,7 @@ trustgate check solution.py --tests test_solution.py --json report.json
 trustgate check solution.py --no-sandbox --html report.html
 trustgate scan . --json project-report.json
 trustgate scan . --changed --base origin/main
+trustgate scan . --project-tests "python -m pytest -q" --sarif trustgate.sarif
 trustgate report report.json        # re-render a saved report
 ```
 
@@ -61,12 +62,18 @@ copy-paste form:
 trustgate scan .                         # scan tracked Python files
 trustgate scan . --changed --base HEAD   # scan changed + untracked Python files
 trustgate scan . --html trustgate.html   # portfolio/CI-friendly report
+trustgate scan . --sarif trustgate.sarif # GitHub code scanning format
 ```
 
-`scan` is static-only in v1.0 because the Docker runner currently executes a
-single submitted file with a matching pytest file. This keeps project scans
-safe and deterministic while still catching LLM-specific defects in pull
-requests.
+`scan` runs static code and dependency-manifest checks by default. In trusted CI
+it can also run a project test command:
+
+```
+trustgate scan . --project-tests "python -m pytest -q"
+```
+
+The command is explicit on purpose: TrustGate should not silently execute
+arbitrary project commands from an untrusted repository.
 
 GitHub Action usage:
 
@@ -76,6 +83,7 @@ GitHub Action usage:
     mode: scan
     changed: "true"
     base: ${{ github.event.pull_request.base.sha }}
+    sarif: trustgate.sarif
 ```
 
 ## Status
@@ -84,8 +92,10 @@ GitHub Action usage:
 - [X] L2 sandbox runner (needs Docker; degrades gracefully without it)
 - [X] L3 mutation analysis with a green-baseline guard
 - [X] GitHub Action (`action.yml`): BLOCK fails the job, REVIEW passes with a summary
-- [X] Project/git scan mode (`trustgate scan .`, `--changed`)
+- [X] Project/git scan mode (`trustgate scan .`, `--changed`, dependency manifests)
 - [X] Self-contained HTML reports for portfolio and CI artifacts
+- [X] SARIF export for GitHub code scanning integration
+- [X] Versioned smoke benchmark (`experiment/static_benchmark.py`)
 - [X] Experiment harness (`experiment/`): corpus generation for 2 LLM providers,
   seeded defect injection, metrics vs flake8+bandit baseline
 
@@ -93,6 +103,8 @@ Running the full experiment needs Docker and API keys
 (`OPENAI_API_KEY`, `GIGACHAT_TOKEN`): `make experiment`.
 
 Competition notes and development plan are in `docs/competition_ru.md`.
+Benchmark notes are in `docs/benchmark.md`; defense notes are in
+`docs/defense_questions_ru.md`.
 
 ## Limitations
 

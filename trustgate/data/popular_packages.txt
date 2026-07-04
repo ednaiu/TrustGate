@@ -40,6 +40,7 @@ aiohttp
 httpx
 websockets
 pytest
+pytest-cov
 hypothesis
 tox
 mypy

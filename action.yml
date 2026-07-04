@@ -37,6 +37,18 @@ inputs:
     description: Optional HTML report output path
     required: false
     default: ""
+  sarif:
+    description: Optional SARIF report output path
+    required: false
+    default: ""
+  project-tests:
+    description: Optional trusted project test command for scan mode
+    required: false
+    default: ""
+  project-test-timeout:
+    description: Timeout in seconds for project-tests
+    required: false
+    default: "120"
 
 outputs:
   verdict:
@@ -64,9 +76,11 @@ runs:
         else
           args=(scan "${{ inputs.path }}" --json report.json)
           [ "${{ inputs.changed }}" = "true" ] && args+=(--changed --base "${{ inputs.base }}")
+          [ -n "${{ inputs.project-tests }}" ] && args+=(--project-tests "${{ inputs.project-tests }}" --project-test-timeout "${{ inputs.project-test-timeout }}")
         fi
         [ -n "${{ inputs.config }}" ] && args+=(--config "${{ inputs.config }}")
         [ -n "${{ inputs.html }}" ] && args+=(--html "${{ inputs.html }}")
+        [ -n "${{ inputs.sarif }}" ] && args+=(--sarif "${{ inputs.sarif }}")
         trustgate "${args[@]}" > summary.md
         rc=$?
         cat summary.md >> "$GITHUB_STEP_SUMMARY"

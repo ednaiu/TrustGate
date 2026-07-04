@@ -3,10 +3,13 @@
 ## 1.1.0 — unreleased
 
 - Added project/git scan workflow: `trustgate scan .` and `--changed`.
+- Added dependency manifest checks for `pyproject.toml` and `requirements*.txt`.
+- Added optional trusted project test command for repository scans.
+- Added SARIF export for GitHub code scanning.
 - Added self-contained HTML reports for single-file and project scans.
 - Added shared analysis engine for CLI and scan use cases.
 - Updated GitHub Action to support `mode: scan`.
-- Added competition, taxonomy and threat-model documentation.
+- Added benchmark, competition, defense, taxonomy and threat-model documentation.
 - Added demo examples that do not pollute project scans.
 - Added tests for project scan and HTML CLI output.
 

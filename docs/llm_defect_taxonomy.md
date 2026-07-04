@@ -16,6 +16,7 @@ replace linters, but to cover mistakes that often appear in generated code.
 | TG-D09 | Stub left as implementation | LLM output sometimes contains `pass`, TODOs, or `NotImplementedError`. |
 | TG-D10 | Dead code | A sign of low-quality or mechanically stitched code. |
 | TG-D11 | Tautological assert | Tests can look present while proving nothing. |
+| TG-D12 | Suspicious dependency | LLMs can invent package names in `pyproject.toml` or `requirements.txt`. |
 
 ## What TrustGate intentionally does not claim
 

@@ -18,6 +18,7 @@ DEFAULT_PENALTIES = {
     "TG-D09": 10,
     "TG-D10": 5,
     "TG-D11": 12,
+    "TG-D12": 15,
 }
 
 # used when a detector downgrades severity (e.g. eval on a literal)
@@ -35,6 +36,7 @@ DEFAULT_SEVERITY = {
     "TG-D09": "major",
     "TG-D10": "minor",
     "TG-D11": "major",
+    "TG-D12": "major",
 }
 
 DEFAULTS = {

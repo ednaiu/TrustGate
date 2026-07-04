@@ -16,6 +16,7 @@ TG-D08 = 7    # broad except swallowing errors
 TG-D09 = 10   # stub instead of implementation
 TG-D10 = 5    # dead code
 TG-D11 = 12   # tautological assert
+TG-D12 = 15   # suspicious dependency manifest entry
 
 [thresholds]
 pass = 76     # score >= pass  -> PASS

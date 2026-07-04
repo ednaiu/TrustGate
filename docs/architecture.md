@@ -14,8 +14,10 @@ git repo / project dir  -->  trustgate scan
         |
         |-- discover Python files from git ls-files / git diff / directory walk
         |-- run L1 static analysis per file
+        |-- inspect dependency manifests (pyproject.toml, requirements*.txt)
+        |-- optionally run a trusted project test command
         |-- aggregate findings once for the whole project
-        '-- markdown + JSON + optional HTML project report
+        '-- markdown + JSON + optional HTML/SARIF project report
 ```
 
 ## Modules
@@ -36,7 +38,8 @@ git repo / project dir  -->  trustgate scan
 - `engine.py` — shared single-file analysis pipeline used by `check` and
   project scan internals.
 - `scan.py` — repository/project workflow: discover Python files, scan all or
-  changed files, aggregate a project-level verdict.
+  changed files, inspect dependency manifests, optionally run a trusted project
+  test command, emit SARIF, aggregate a project-level verdict.
 
 ## Invariants worth keeping
 
@@ -46,5 +49,7 @@ git repo / project dir  -->  trustgate scan
 3. Two runs on the same input produce identical reports (fixed seeds).
 4. Exit codes: 0 PASS, 1 REVIEW, 2 BLOCK, 3 bad input, 4 internal —
    argparse usage errors are remapped from 2 to 3.
-5. Project scan is static-only in v1.0. It should not pretend that existing
-   project tests were executed in the single-file sandbox.
+5. Project scan executes tests only when the caller explicitly supplies a
+   trusted command via `--project-tests`.
+6. Project mutation is not implied by project tests; mutation remains scoped to
+   the single-file sandbox flow until a project-level mutator exists.

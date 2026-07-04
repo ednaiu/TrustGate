@@ -93,6 +93,8 @@ def scan(args) -> int:
         changed=args.changed,
         base=args.base,
         cfg=cfg,
+        project_tests=args.project_tests,
+        project_test_timeout=args.project_test_timeout,
         warn=lambda message: print(message, file=sys.stderr),
     )
 
@@ -100,6 +102,8 @@ def scan(args) -> int:
         project_scan.dump(result, args.json)
     if args.html:
         project_scan.dump_html(result, args.html)
+    if args.sarif:
+        project_scan.dump_sarif(result, args.sarif)
     print(project_scan.to_markdown(result))
     return EXIT[result["verdict"]]
 
@@ -129,8 +133,12 @@ def main(argv=None) -> int:
     p_scan.add_argument("--base", default="HEAD",
                         help="git base for --changed, default: HEAD")
     p_scan.add_argument("--config", help="weights.toml with custom penalties")
+    p_scan.add_argument("--project-tests",
+                        help="trusted project test command, e.g. 'python -m pytest -q'")
+    p_scan.add_argument("--project-test-timeout", type=int, default=120)
     p_scan.add_argument("--json", help="write the full project report to this path")
     p_scan.add_argument("--html", help="write a self-contained HTML project report")
+    p_scan.add_argument("--sarif", help="write SARIF for GitHub code scanning")
 
     args = parser.parse_args(argv)
     try:

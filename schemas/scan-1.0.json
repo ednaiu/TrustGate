@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "trustgate project scan report v1.0",
   "type": "object",
-  "required": ["version", "mode", "target", "score", "raw_score", "verdict", "partial", "summary", "files", "findings", "syntax_errors", "timing_ms"],
+  "required": ["version", "mode", "target", "score", "raw_score", "verdict", "partial", "summary", "files", "dynamic", "findings", "syntax_errors", "timing_ms"],
   "properties": {
     "version": { "const": "1.0" },
     "mode": { "enum": ["project", "changed"] },
@@ -14,15 +14,17 @@
     "partial": { "type": "boolean" },
     "summary": {
       "type": "object",
-      "required": ["files_scanned", "files_analyzed", "findings", "syntax_errors"],
+      "required": ["files_scanned", "files_analyzed", "manifest_findings", "findings", "syntax_errors"],
       "properties": {
         "files_scanned": { "type": "integer", "minimum": 0 },
         "files_analyzed": { "type": "integer", "minimum": 0 },
+        "manifest_findings": { "type": "integer", "minimum": 0 },
         "findings": { "type": "integer", "minimum": 0 },
         "syntax_errors": { "type": "integer", "minimum": 0 }
       }
     },
     "files": { "type": "array" },
+    "dynamic": { "type": "object", "required": ["ran"] },
     "findings": {
       "type": "array",
       "items": {

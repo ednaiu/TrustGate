@@ -1,4 +1,4 @@
-.PHONY: test coverage scan demo-report experiment demo
+.PHONY: test coverage scan benchmark demo-report experiment demo
 
 test:
 	pytest -q
@@ -7,7 +7,10 @@ coverage:
 	pytest --cov=trustgate --cov-fail-under=80 -q
 
 scan:
-	trustgate scan . --json trustgate-scan.json --html trustgate-scan.html
+	trustgate scan . --json trustgate-scan.json --html trustgate-scan.html --sarif trustgate.sarif
+
+benchmark:
+	python experiment/static_benchmark.py
 
 demo-report:
 	trustgate check examples/block_solution.py.example --no-sandbox --html trustgate-demo.html
