@@ -1,0 +1,51 @@
+name: TrustGate
+description: Trust scoring for LLM-generated Python code in pull requests
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  file:
+    description: Python file to analyze
+    required: true
+  tests:
+    description: Optional pytest file for the dynamic layer
+    required: false
+    default: ""
+  config:
+    description: Optional weights.toml
+    required: false
+    default: ""
+
+outputs:
+  verdict:
+    description: PASS / REVIEW / BLOCK
+    value: ${{ steps.check.outputs.verdict }}
+  score:
+    description: Trust score 0-100
+    value: ${{ steps.check.outputs.score }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install trustgate
+      shell: bash
+      run: pip install --quiet "${{ github.action_path }}"
+
+    - name: Run check
+      id: check
+      shell: bash
+      run: |
+        set +e
+        args=(check "${{ inputs.file }}" --json report.json)
+        [ -n "${{ inputs.tests }}" ] && args+=(--tests "${{ inputs.tests }}")
+        [ -n "${{ inputs.config }}" ] && args+=(--config "${{ inputs.config }}")
+        trustgate "${args[@]}" > summary.md
+        rc=$?
+        cat summary.md >> "$GITHUB_STEP_SUMMARY"
+        echo "verdict=$(python -c "import json;print(json.load(open('report.json'))['verdict'])")" >> "$GITHUB_OUTPUT"
+        echo "score=$(python -c "import json;print(json.load(open('report.json'))['score'])")" >> "$GITHUB_OUTPUT"
+        # only BLOCK fails the job; REVIEW passes with a visible summary (NS-3)
+        if [ $rc -eq 2 ]; then exit 2; fi
+        if [ $rc -ge 3 ]; then exit $rc; fi
+        exit 0

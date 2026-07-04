@@ -1,0 +1,36 @@
+# Default penalties per detector (subtracted from 100).
+# Rationale: hallucinated imports and injection-style issues are the defects
+# specific to generated code, so they cost the most.
+
+saturation = 40   # per-detector cap, major/minor detectors only
+
+[penalties]
+TG-D01 = 25   # hallucinated / typosquat import
+TG-D02 = 20   # non-existent attribute of a known module
+TG-D03 = 25   # eval/exec/pickle on non-literal data
+TG-D04 = 20   # SQL built by string interpolation
+TG-D05 = 10   # shell=True with non-literal command
+TG-D06 = 12   # verify=False
+TG-D07 = 12   # md5/sha1 for secrets
+TG-D08 = 7    # broad except swallowing errors
+TG-D09 = 10   # stub instead of implementation
+TG-D10 = 5    # dead code
+TG-D11 = 12   # tautological assert
+
+[thresholds]
+pass = 76     # score >= pass  -> PASS
+block = 39    # score <= block -> BLOCK, otherwise REVIEW
+
+[dynamic]
+first_fail = 15
+next_fail = 5
+fail_cap = 30
+timeout = 15
+build_error = 25
+
+[mutation]
+missing = 10      # any path without a mutation verdict: no tests, --no-mutation, no sandbox
+low = 20          # mutation_score in [0, 0.4)
+mid = 10          # [0.4, 0.7)
+low_bound = 0.4
+mid_bound = 0.7

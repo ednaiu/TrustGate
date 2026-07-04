@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]" jsonschema
+      - run: pytest --cov=trustgate --cov-fail-under=80 -q
+
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      # no false criticals on our own code (DoD-5); REVIEW (exit 1) is fine
+      - run: |
+          set +e
+          for f in trustgate/*.py; do
+            trustgate check "$f" --no-sandbox --json /tmp/r.json
+            rc=$?
+            if [ $rc -eq 2 ]; then echo "BLOCK on own code: $f"; exit 1; fi
+            if [ $rc -ge 3 ]; then echo "tool error on $f"; exit 1; fi
+          done
