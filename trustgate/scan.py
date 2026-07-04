@@ -7,6 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from . import mutation
 from .config import Config
 from .engine import analyze_source
 from .findings import Finding
@@ -263,6 +264,80 @@ def run_project_tests(root: Path, command: str, timeout: int = 120) -> dict:
     }
 
 
+def _is_test_file(path: Path, root: Path) -> bool:
+    rel = path.relative_to(root)
+    return rel.name.startswith("test_") or "tests" in rel.parts
+
+
+def run_project_mutation(
+    root: Path,
+    files: list[Path],
+    command: str | None,
+    limit: int = 20,
+    timeout: int = 120,
+    seed: int = 0,
+) -> dict:
+    if not command:
+        return {"ran": False, "reason": "project_tests_not_configured"}
+    if limit <= 0:
+        return {"ran": False, "reason": "project_mutation_limit_is_zero"}
+
+    candidates = []
+    for path in files:
+        if _is_test_file(path, root):
+            continue
+        source, error = _read_utf8(path)
+        if error:
+            continue
+        try:
+            mutants = mutation.generate(source, seed=seed)
+        except SyntaxError:
+            continue
+        for desc, mutated_source in mutants:
+            candidates.append((path, source, desc, mutated_source))
+            if len(candidates) >= limit:
+                break
+        if len(candidates) >= limit:
+            break
+
+    if not candidates:
+        return {
+            "ran": True,
+            "kind": "project",
+            "command": command,
+            "mutants_total": 0,
+            "mutants_killed": 0,
+            "mutation_score": 1.0,
+            "survivors": [],
+        }
+
+    killed = 0
+    survivors = []
+    started = time.monotonic()
+    for path, original_source, desc, mutated_source in candidates:
+        rel = str(path.relative_to(root))
+        try:
+            path.write_text(mutated_source + "\n", encoding="utf-8")
+            result = run_project_tests(root, command, timeout=timeout)
+            if result.get("tests_failed", 0) > 0 or result.get("build_error") or result.get("timeout"):
+                killed += 1
+            else:
+                survivors.append({"file": rel, "mutation": desc})
+        finally:
+            path.write_text(original_source, encoding="utf-8")
+
+    return {
+        "ran": True,
+        "kind": "project",
+        "command": command,
+        "mutants_total": len(candidates),
+        "mutants_killed": killed,
+        "mutation_score": killed / len(candidates),
+        "survivors": survivors[:20],
+        "duration_ms": int((time.monotonic() - started) * 1000),
+    }
+
+
 def scan_project(
     root: Path,
     changed: bool = False,
@@ -270,6 +345,9 @@ def scan_project(
     cfg: Config | None = None,
     project_tests: str | None = None,
     project_test_timeout: int = 120,
+    project_mutation: bool = False,
+    project_mutation_limit: int = 20,
+    policy_data: dict | None = None,
     warn=None,
 ) -> dict:
     cfg = cfg or Config()
@@ -319,12 +397,22 @@ def scan_project(
         run_project_tests(root, project_tests, timeout=project_test_timeout)
         if project_tests else {"ran": False, "reason": "project_tests_not_configured"}
     )
+    mutation_result = (
+        run_project_mutation(
+            root,
+            files,
+            project_tests,
+            limit=project_mutation_limit,
+            timeout=project_test_timeout,
+        )
+        if project_mutation else {"ran": False, "reason": "project_mutation_not_enabled"}
+    )
 
     finding_objects = [_finding_from_dict(item) for item in static_findings]
     raw, score, verdict = scoring.aggregate(
         finding_objects,
         dynamic,
-        {"ran": False, "reason": "project_scan_static_only"},
+        mutation_result,
         cfg,
     )
     if syntax_errors:
@@ -332,7 +420,7 @@ def scan_project(
         score = 0
         verdict = "BLOCK"
 
-    return {
+    out = {
         "version": report.REPORT_VERSION,
         "mode": "changed" if changed else "project",
         "target": str(root),
@@ -340,7 +428,7 @@ def scan_project(
         "score": score,
         "raw_score": raw,
         "verdict": verdict,
-        "partial": True,
+        "partial": not (dynamic.get("ran") and mutation_result.get("ran")),
         "summary": {
             "files_scanned": len(files),
             "files_analyzed": len(file_reports),
@@ -350,20 +438,26 @@ def scan_project(
         },
         "files": file_reports,
         "dynamic": dynamic,
+        "mutation": mutation_result,
         "findings": static_findings,
         "syntax_errors": syntax_errors,
         "timing_ms": {"scan": int((time.monotonic() - started) * 1000)},
     }
+    if policy_data:
+        from .policy import apply_policy
+        out = apply_policy(out, policy_data)
+    return out
 
 
 def to_markdown(scan_report: dict) -> str:
     summary = scan_report["summary"]
     mode = "changed files" if scan_report["mode"] == "changed" else "project"
+    completeness = "partial analysis" if scan_report.get("partial") else "full analysis"
     lines = [
         f"## TrustGate scan: **{scan_report['verdict']}** "
         f"(score {scan_report['score']}/100)",
         "",
-        f"Target: `{scan_report['target']}`  ·  mode: `{mode}`  ·  *partial analysis*",
+        f"Target: `{scan_report['target']}`  ·  mode: `{mode}`  ·  *{completeness}*",
         "",
         f"Files scanned: {summary['files_scanned']}; "
         f"findings: {summary['findings']}; "
@@ -375,6 +469,15 @@ def to_markdown(scan_report: dict) -> str:
         lines.append(
             f"Project tests: command `{dynamic['command']}`, "
             f"return code {dynamic.get('returncode', 'timeout')}"
+        )
+        lines.append("")
+    mutation_result = scan_report.get("mutation", {})
+    if mutation_result.get("ran"):
+        lines.append(
+            "Project mutation: "
+            f"{mutation_result.get('mutants_killed', 0)}/"
+            f"{mutation_result.get('mutants_total', 0)} killed "
+            f"(score {mutation_result.get('mutation_score', 0):.2f})"
         )
         lines.append("")
     if scan_report["syntax_errors"]:
@@ -409,7 +512,7 @@ def to_html(scan_report: dict) -> str:
         "layers": {
             "static": {"findings": scan_report["findings"]},
             "dynamic": scan_report.get("dynamic", {"ran": False, "reason": "project_tests_not_configured"}),
-            "mutation": {"ran": False, "reason": "project_scan_static_only"},
+            "mutation": scan_report.get("mutation", {"ran": False, "reason": "project_mutation_not_enabled"}),
         },
         "timing_ms": scan_report["timing_ms"],
     }
@@ -483,3 +586,23 @@ def to_sarif(scan_report: dict) -> dict:
 def dump_sarif(scan_report: dict, path) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(to_sarif(scan_report), f, indent=2, ensure_ascii=False)
+
+
+def to_github_annotations(scan_report: dict) -> list[dict]:
+    level_by_severity = {"critical": "failure", "major": "warning", "minor": "notice"}
+    annotations = []
+    for item in scan_report.get("findings", []):
+        annotations.append({
+            "path": item["file"],
+            "start_line": max(1, int(item["line"])),
+            "end_line": max(1, int(item["line"])),
+            "annotation_level": level_by_severity.get(item["severity"], "warning"),
+            "title": item["detector"],
+            "message": f"{item['message']} (-{item['penalty']} trust points)",
+        })
+    return annotations
+
+
+def dump_github_annotations(scan_report: dict, path) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(to_github_annotations(scan_report), f, indent=2, ensure_ascii=False)

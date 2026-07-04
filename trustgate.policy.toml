@@ -26,3 +26,25 @@ low = 25
 mid = 12
 low_bound = 0.4
 mid_bound = 0.7
+
+[policy]
+fail_on_review = true
+require_project_tests = true
+require_project_mutation = true
+max_findings = 0
+max_critical_findings = 0
+
+[roles.viewer]
+permissions = ["read"]
+
+[roles.reviewer]
+permissions = ["read", "comment", "approve_review"]
+
+[roles.maintainer]
+permissions = ["read", "comment", "override_block", "manage_policy"]
+
+[users.eva]
+role = "maintainer"
+
+[users.reviewer_demo]
+role = "reviewer"

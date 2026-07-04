@@ -116,6 +116,45 @@ def test_scan_project_from_cli(tmp_path, capsys):
     assert rep["findings"][0]["file"] == "bad.py"
 
 
+def test_scan_cli_writes_github_annotations(tmp_path):
+    (tmp_path / "bad.py").write_text("import requsets\n")
+    annotations = tmp_path / "annotations.json"
+
+    code = main(["scan", str(tmp_path), "--github-annotations", str(annotations)])
+
+    assert code == 1
+    data = json.loads(annotations.read_text())
+    assert data[0]["path"] == "bad.py"
+
+
+def test_scan_cli_applies_policy(tmp_path):
+    (tmp_path / "ok.py").write_text("x = 1\n")
+    policy = tmp_path / "policy.toml"
+    policy.write_text(
+        "[policy]\nrequire_project_tests = true\n\n"
+        "[users.eva]\nrole = 'maintainer'\n"
+    )
+
+    out = tmp_path / "scan.json"
+    code = main(["scan", str(tmp_path), "--policy", str(policy), "--user", "eva", "--json", str(out)])
+
+    rep = json.loads(out.read_text())
+    assert code == 2
+    assert rep["policy"]["triggered"] == ["require_project_tests"]
+    assert rep["policy"]["active_role"] == "maintainer"
+
+
+def test_dashboard_cli(tmp_path, capsys):
+    (tmp_path / "ok.py").write_text("x = 1\n")
+    db = tmp_path / "history.sqlite"
+    html = tmp_path / "dashboard.html"
+
+    assert main(["scan", str(tmp_path), "--save-history", str(db)]) == 0
+    assert main(["dashboard", "--db", str(db), "--html", str(html)]) == 0
+    assert "TrustGate dashboard written" in capsys.readouterr().out
+    assert "История проверок" in html.read_text()
+
+
 def test_determinism(tmp_path):
     _, first = run(tmp_path, BAD)
     _, second = run(tmp_path, BAD)

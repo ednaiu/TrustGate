@@ -86,6 +86,37 @@ def test_scan_project_can_run_trusted_project_tests(tmp_path):
     assert rep["verdict"] == "PASS"
 
 
+def test_scan_project_can_run_repository_mutation(tmp_path):
+    (tmp_path / "calc.py").write_text("def is_positive(x):\n    return x > 0\n")
+    (tmp_path / "test_calc.py").write_text(
+        "from calc import is_positive\n\n"
+        "def test_is_positive():\n"
+        "    assert is_positive(1)\n"
+        "    assert not is_positive(0)\n"
+    )
+
+    rep = scan.scan_project(
+        tmp_path,
+        project_tests=f"{sys.executable} -m pytest -q",
+        project_mutation=True,
+        project_mutation_limit=5,
+    )
+
+    assert rep["mutation"]["ran"] is True
+    assert rep["mutation"]["mutants_total"] > 0
+    assert rep["mutation"]["mutation_score"] >= 0
+
+
+def test_scan_github_annotations(tmp_path):
+    (tmp_path / "bad.py").write_text("import requsets\n")
+
+    rep = scan.scan_project(tmp_path)
+    annotations = scan.to_github_annotations(rep)
+
+    assert annotations[0]["path"] == "bad.py"
+    assert annotations[0]["annotation_level"] == "failure"
+
+
 def test_scan_report_matches_schema(tmp_path):
     import pytest
 

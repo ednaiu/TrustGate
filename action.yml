@@ -49,6 +49,30 @@ inputs:
     description: Timeout in seconds for project-tests
     required: false
     default: "120"
+  project-mutation:
+    description: Run repository-level mutation analysis with project-tests
+    required: false
+    default: "false"
+  project-mutation-limit:
+    description: Maximum mutants for repository-level mutation analysis
+    required: false
+    default: "20"
+  policy:
+    description: Optional policy TOML for CI gates and roles
+    required: false
+    default: ""
+  role:
+    description: Optional active role from policy TOML
+    required: false
+    default: ""
+  user:
+    description: Optional active user from policy TOML
+    required: false
+    default: ""
+  github-annotations:
+    description: Optional GitHub Checks annotations JSON output path
+    required: false
+    default: ""
 
 outputs:
   verdict:
@@ -77,10 +101,15 @@ runs:
           args=(scan "${{ inputs.path }}" --json report.json)
           [ "${{ inputs.changed }}" = "true" ] && args+=(--changed --base "${{ inputs.base }}")
           [ -n "${{ inputs.project-tests }}" ] && args+=(--project-tests "${{ inputs.project-tests }}" --project-test-timeout "${{ inputs.project-test-timeout }}")
+          [ "${{ inputs.project-mutation }}" = "true" ] && args+=(--project-mutation --project-mutation-limit "${{ inputs.project-mutation-limit }}")
         fi
         [ -n "${{ inputs.config }}" ] && args+=(--config "${{ inputs.config }}")
+        [ -n "${{ inputs.policy }}" ] && args+=(--policy "${{ inputs.policy }}")
+        [ -n "${{ inputs.role }}" ] && args+=(--role "${{ inputs.role }}")
+        [ -n "${{ inputs.user }}" ] && args+=(--user "${{ inputs.user }}")
         [ -n "${{ inputs.html }}" ] && args+=(--html "${{ inputs.html }}")
         [ -n "${{ inputs.sarif }}" ] && args+=(--sarif "${{ inputs.sarif }}")
+        [ -n "${{ inputs.github-annotations }}" ] && args+=(--github-annotations "${{ inputs.github-annotations }}")
         trustgate "${args[@]}" > summary.md
         rc=$?
         cat summary.md >> "$GITHUB_STEP_SUMMARY"

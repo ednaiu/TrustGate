@@ -1,5 +1,16 @@
 # История Изменений
 
+## 1.3.0 - 2026-07-04
+
+- Добавлен project-level mutation testing: `trustgate scan . --project-mutation`.
+- Добавлен policy management: TOML-gates, роли и влияние политики на verdict.
+- Расширена SQLite-модель до `projects -> scan_runs -> scan_findings`.
+- Добавлен HTML dashboard по истории и динамике detector findings.
+- Добавлен GitHub Checks annotations JSON export.
+- Добавлен external benchmark runner: confusion matrix, false positive analysis
+  и сравнение с `ruff`, `flake8`, `bandit`, `semgrep`.
+- Обновлены русские документы под новый repo-flow и честный 100+ corpus flow.
+
 ## 1.2.0 - 2026-07-04
 
 - Добавлен SQLite history: `trustgate scan . --save-history`.

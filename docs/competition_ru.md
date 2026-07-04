@@ -31,19 +31,27 @@ TrustGate - это инструмент для проверки Python-кода,
 
 ## Что уже сделано
 
-- 11 AST-детекторов `TG-D01..TG-D11`.
+- 12 детекторов `TG-D01..TG-D12`, включая dependency manifest scan.
 - Безопасный запуск тестов в Docker: без сети, с лимитами CPU/RAM/PID.
-- Mutation testing с фиксированным seed и лимитом мутантов.
+- Mutation testing с фиксированным seed и лимитом мутантов: single-file и
+  repo-flow через `--project-mutation`.
 - Объяснимый Trust Score 0-100.
-- CLI: `check`, `scan`, `report`.
+- CLI: `check`, `scan`, `report`, `history`, `dashboard`.
 - Git workflow: `trustgate scan .` и `trustgate scan . --changed`.
 - Dependency manifest scan для `pyproject.toml` и `requirements*.txt`.
 - Optional project tests: `trustgate scan . --project-tests "python -m pytest -q"`.
 - SARIF export для GitHub code scanning.
+- GitHub Checks annotations JSON.
+- Policy management: TOML-gates и роли `viewer`, `reviewer`, `maintainer`.
+- SQLite persistence: `project -> scan runs -> findings -> detector trends`.
+- Dashboard по истории проверок.
 - GitHub Action для PR.
 - JSON schema и HTML reports.
 - Набор тестов для детекторов, scoring, sandbox, CLI и project scan.
 - Воспроизводимый smoke benchmark: `experiment/static_benchmark.py`.
+- External benchmark runner: confusion matrix, false positive analysis,
+  сравнение с `ruff`, `flake8`, `bandit`, `semgrep` при наличии корпуса 100+
+  реальных LLM samples.
 
 ## Личный вклад
 
@@ -79,37 +87,49 @@ trustgate scan . --json project-report.json --html project-report.html --sarif t
 trustgate scan . --changed --base HEAD
 ```
 
-4. Проверка проекта вместе с доверенной командой тестов:
+4. Проверка проекта вместе с доверенной командой тестов и mutation layer:
 
 ```bash
-trustgate scan . --project-tests "python -m pytest -q"
+trustgate scan . --project-tests "python -m pytest -q" --project-mutation
 ```
 
-5. GitHub Action в pull request: `BLOCK` падает, `REVIEW` оставляет summary,
+5. Политика merge decision:
+
+```bash
+trustgate scan . \
+  --project-tests "python -m pytest -q" \
+  --project-mutation \
+  --policy trustgate.policy.toml \
+  --user eva
+```
+
+6. Dashboard по истории:
+
+```bash
+trustgate scan . --save-history trustgate-history.sqlite
+trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.html
+```
+
+7. GitHub Action в pull request: `BLOCK` падает, `REVIEW` оставляет summary,
    `PASS` проходит.
 
 ## Слабые места, которые я понимаю
 
-- Mutation testing пока полноценно работает для одного файла с pytest; project
-  scan умеет запускать доверенную команду тестов, но не генерирует мутанты для
-  всего репозитория.
 - Поддерживается только Python.
 - Часть проверок эвристическая: например, import hallucination зависит от
   списка популярных пакетов и локального окружения.
-- Для сильной исследовательской защиты нужен большой benchmark с метриками
-  против `ruff`, `flake8`, `bandit` и `semgrep`; маленький smoke benchmark уже
-  лежит в репозитории.
+- Для сильной исследовательской защиты нужен внешний корпус 100+ реальных LLM
+  samples. Runner уже есть, но сам корпус не подделывается и должен быть
+  собран отдельно.
 
 ## План развития
 
 Ближайший практический план:
 
-1. Расширить benchmark до 100+ LLM-решений: precision, recall, F1, false
-   positive rate.
-2. Добавить project-level mutation testing.
-3. Сохранять историю проверок в SQLite.
-4. Добавить GitHub Checks annotations поверх SARIF.
-5. Расширить поддержку языков: JavaScript/TypeScript как следующий кандидат.
+1. Собрать и опубликовать внешний корпус 100+ LLM samples с разметкой.
+2. Добавить JavaScript/TypeScript как следующий язык.
+3. Добавить web-режим dashboard с авторизацией поверх текущей SQLite-модели.
+4. Расширить policy roles до интеграции с GitHub teams.
 
 Главная цель развития - сделать TrustGate не заменой линтеров, а отдельным
 слоем контроля доверия к AI-generated коду.

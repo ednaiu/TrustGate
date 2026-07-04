@@ -1,8 +1,8 @@
-# Бенчмарк И План Оценки
+# Бенчмарк И Оценка Качества
 
 TrustGate не должен опираться на голословное утверждение “обычные линтеры
-пропускают LLM-дефекты”. Поэтому в проекте есть воспроизводимый smoke benchmark
-и план большого benchmark.
+пропускают LLM-дефекты”. Поэтому в проекте есть два уровня оценки:
+регрессионный smoke benchmark и внешний benchmark на реальном корпусе.
 
 ## Текущий Smoke-Бенчмарк
 
@@ -33,15 +33,59 @@ python experiment/static_benchmark.py
 означает, что каждый finding обязан давать `BLOCK`: часть findings по design
 дают `REVIEW` или остаются в `PASS` как предупреждение.
 
-## Большой Бенчмарк
+## Внешний Бенчмарк На 100+ LLM Samples
 
-Следующий уровень - минимум 100 Python-решений:
+Runner уже реализован: `experiment/benchmark_external.py`.
 
-- задачи из `experiment/tasks/`;
-- несколько LLM-провайдеров;
-- clean/defective labels по reference tests;
-- injected defects с ground truth;
-- сравнение с `ruff`, `flake8`, `bandit`, `semgrep`.
+Формат корпуса: JSON или JSONL, минимум 100 записей:
+
+```json
+[
+  {
+    "id": "sample_001",
+    "label": "clean",
+    "code": "def add(a, b):\n    return a + b\n"
+  },
+  {
+    "id": "sample_002",
+    "label": "defective",
+    "code": "def parse(raw):\n    return eval(raw)\n"
+  }
+]
+```
+
+Допустимые defective labels: `defective`, `bad`, `unsafe`, `vulnerable`,
+`hallucinated`, `1`, `true`. Все остальные labels считаются clean.
+
+Запуск:
+
+```bash
+python experiment/benchmark_external.py \
+  --corpus data/llm_samples_100.json \
+  --out benchmark-result.json
+```
+
+Если корпус содержит меньше 100 samples, runner честно вернет
+`"status": "needs_corpus"`. Это сделано специально, чтобы проект не выдавал
+маленькую синтетику за полноценное исследование.
+
+## Сравнение С Ruff, Flake8, Bandit, Semgrep
+
+Runner автоматически пробует запустить:
+
+- `ruff check --output-format json`;
+- `flake8`;
+- `bandit -q -f json`;
+- `semgrep --quiet --json --config auto`.
+
+Если инструмент не установлен, в JSON будет:
+
+```json
+{ "available": false, "reason": "tool_not_installed" }
+```
+
+То есть benchmark не падает из-за отсутствия optional baseline, но явно
+показывает, какие сравнения реально были выполнены.
 
 Минимальная таблица:
 
@@ -52,6 +96,31 @@ python experiment/static_benchmark.py
 | bandit | TBD | TBD | TBD | TBD |
 | semgrep | TBD | TBD | TBD | TBD |
 
-Такое разделение не позволяет завышать claims: текущий benchmark доказывает
+## Confusion Matrix И False Positive Analysis
+
+Для TrustGate и каждого доступного baseline runner считает:
+
+- `tp` - defective sample найден;
+- `tn` - clean sample не найден как дефектный;
+- `fp` - clean sample ошибочно помечен;
+- `fn` - defective sample пропущен;
+- `precision`, `recall`, `f1`.
+
+Отдельный блок `false_positive_analysis` содержит список clean samples, которые
+были помечены как проблемные, с указанием инструмента и detector ids для
+TrustGate. Этот список нужен для ручного разбора нормальных проектов: какие
+правила слишком агрессивны и где стоит снижать severity.
+
+## Как Подготовить Честный Корпус
+
+1. Взять 100+ Python-фрагментов или небольших решений, реально созданных LLM.
+2. Для каждого sample сохранить исходный prompt или ссылку на задачу отдельно
+   от benchmark JSON.
+3. Разметить `clean`/`defective` по reference tests, review и known defects.
+4. Добавить отдельную группу нормальных open-source файлов без искусственных
+   дефектов для false positive analysis.
+5. Запустить runner и сохранить `benchmark-result.json` как artifact.
+
+Такое разделение не позволяет завышать claims: smoke benchmark доказывает
 механизм и регрессионную проверку, а сильное исследовательское утверждение
-потребует большого корпуса.
+появляется только после подключения внешнего корпуса.

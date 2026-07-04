@@ -7,7 +7,7 @@ TrustGate - это инструмент оценки доверия к Python-к
 файлы в git и отвечает на практический вопрос: **можно ли мержить этот патч?**
 
 ```bash
-trustgate scan . --project-tests "python -m pytest -q" --sarif trustgate.sarif
+trustgate scan . --project-tests "python -m pytest -q" --project-mutation --sarif trustgate.sarif
 ```
 
 Результат - объяснимый `Trust Score` от 0 до 100 и вердикт:
@@ -31,8 +31,8 @@ AI-generated патча. TrustGate добавляет такой слой пов
 |------|------------|
 | L1 static | 12 детекторов `TG-D01..TG-D12`: hallucinated imports/API, `eval/exec`, SQL string building, `shell=True`, `verify=False`, weak hashes, broad except, stubs, dead code, tautological asserts, suspicious dependencies |
 | L2 dynamic | запускает pytest в Docker sandbox для single-file flow |
-| L3 mutation | генерирует AST-мутанты и проверяет, убивают ли их тесты |
-| repo scan | проверяет git/project files, dependency manifests, optional project tests, SARIF/HTML/JSON reports |
+| L3 mutation | генерирует AST-мутанты и проверяет, убивают ли их тесты; работает и для single-file flow, и для repo-flow через `--project-mutation` |
+| repo scan | проверяет git/project files, dependency manifests, optional project tests, policy gates, SARIF/HTML/JSON/GitHub annotations |
 
 Код, который анализируется статически, не импортируется. Если выполняются тесты,
 они запускаются только явно: single-file через Docker sandbox или project tests
@@ -49,9 +49,12 @@ trustgate check solution.py --no-sandbox --html report.html
 trustgate scan . --json project-report.json
 trustgate scan . --changed --base origin/main
 trustgate scan . --project-tests "python -m pytest -q"
-trustgate scan . --sarif trustgate.sarif --html trustgate.html
+trustgate scan . --project-tests "python -m pytest -q" --project-mutation
+trustgate scan . --sarif trustgate.sarif --github-annotations annotations.json --html trustgate.html
+trustgate scan . --policy trustgate.policy.toml --user eva
 
 trustgate history --db trustgate-history.sqlite
+trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.html
 trustgate report report.json
 ```
 
@@ -66,7 +69,11 @@ trustgate report report.json
     changed: "true"
     base: ${{ github.event.pull_request.base.sha }}
     project-tests: python -m pytest -q
+    project-mutation: "true"
+    policy: trustgate.policy.toml
+    user: eva
     sarif: trustgate.sarif
+    github-annotations: annotations.json
     html: trustgate-report.html
 ```
 
@@ -94,10 +101,16 @@ make demo-report
 - [x] project/git scan: `trustgate scan .`, `--changed`;
 - [x] dependency manifest scan для `pyproject.toml` и `requirements*.txt`;
 - [x] optional project tests: `--project-tests`;
+- [x] project-level mutation testing: `--project-mutation`;
+- [x] policy management: merge gates и роли в TOML;
 - [x] JSON, HTML и SARIF reports;
-- [x] SQLite history: `--save-history`;
+- [x] GitHub Checks annotations JSON;
+- [x] SQLite persistence: project -> scan runs -> findings -> detector trends;
+- [x] dashboard для истории: `trustgate dashboard`;
 - [x] GitHub Action и SARIF upload workflow;
-- [x] воспроизводимый smoke benchmark.
+- [x] воспроизводимый smoke benchmark;
+- [x] external benchmark runner для 100+ samples и сравнения с `ruff`,
+  `flake8`, `bandit`, `semgrep`.
 
 ## Документация
 
@@ -111,6 +124,6 @@ make demo-report
 ## Ограничения
 
 - Полная поддержка сейчас только для Python.
-- Project-level mutation testing еще не реализован.
-- Большой benchmark на 100+ LLM-решений остается следующим этапом.
+- Большой benchmark требует реальный внешний корпус 100+ LLM samples; проект
+  содержит runner и схему запуска, но не подделывает эти данные.
 - Некоторые проверки эвристические, поэтому возможны false positives.

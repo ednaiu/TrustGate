@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from . import history
+from . import policy
 from . import report
 from . import scan as project_scan
 from .config import Config
@@ -89,6 +90,14 @@ def scan(args) -> int:
     if not root.is_dir():
         _fail_input(f"directory not found: {root}")
     cfg = Config(Path(args.config)) if args.config else Config()
+    policy_data = policy.load_policy(Path(args.policy)) if args.policy else None
+    if policy_data:
+        try:
+            active_role = policy.resolve_role(policy_data, args.user, args.role)
+        except ValueError as exc:
+            _fail_input(str(exc))
+        policy_data["active_role"] = active_role
+        policy_data["active_user"] = args.user
     result = project_scan.scan_project(
         root,
         changed=args.changed,
@@ -96,6 +105,9 @@ def scan(args) -> int:
         cfg=cfg,
         project_tests=args.project_tests,
         project_test_timeout=args.project_test_timeout,
+        project_mutation=args.project_mutation,
+        project_mutation_limit=args.project_mutation_limit,
+        policy_data=policy_data,
         warn=lambda message: print(message, file=sys.stderr),
     )
 
@@ -105,6 +117,8 @@ def scan(args) -> int:
         project_scan.dump_html(result, args.html)
     if args.sarif:
         project_scan.dump_sarif(result, args.sarif)
+    if args.github_annotations:
+        project_scan.dump_github_annotations(result, args.github_annotations)
     if args.save_history:
         scan_id = history.save_scan(result, args.save_history)
         print(f"trustgate: saved scan #{scan_id} to {args.save_history}", file=sys.stderr)
@@ -124,6 +138,13 @@ def history_cmd(args) -> int:
             f"| {row['id']} | {row['verdict']} | {row['score']} | "
             f"{row['findings']} | {row['syntax_errors']} | {row['target']} |"
         )
+    return 0
+
+
+def dashboard_cmd(args) -> int:
+    html = history.render_dashboard(args.db, title=args.title)
+    Path(args.html).write_text(html, encoding="utf-8")
+    print(f"TrustGate dashboard written to {args.html}")
     return 0
 
 
@@ -149,6 +170,11 @@ def main(argv=None) -> int:
     p_history.add_argument("--db", default="trustgate-history.sqlite")
     p_history.add_argument("--limit", type=int, default=10)
 
+    p_dashboard = sub.add_parser("dashboard", help="render saved scan history as HTML")
+    p_dashboard.add_argument("--db", default="trustgate-history.sqlite")
+    p_dashboard.add_argument("--html", default="trustgate-dashboard.html")
+    p_dashboard.add_argument("--title", default="TrustGate dashboard")
+
     p_scan = sub.add_parser("scan", help="scan a project directory or git changes")
     p_scan.add_argument("path", nargs="?", default=".")
     p_scan.add_argument("--changed", action="store_true",
@@ -159,9 +185,16 @@ def main(argv=None) -> int:
     p_scan.add_argument("--project-tests",
                         help="trusted project test command, e.g. 'python -m pytest -q'")
     p_scan.add_argument("--project-test-timeout", type=int, default=120)
+    p_scan.add_argument("--project-mutation", action="store_true",
+                        help="run repository-level mutation analysis with project tests")
+    p_scan.add_argument("--project-mutation-limit", type=int, default=20)
+    p_scan.add_argument("--policy", help="policy TOML for CI gates and roles")
+    p_scan.add_argument("--role", help="active role name from the policy file")
+    p_scan.add_argument("--user", help="active user name from the policy file")
     p_scan.add_argument("--json", help="write the full project report to this path")
     p_scan.add_argument("--html", help="write a self-contained HTML project report")
     p_scan.add_argument("--sarif", help="write SARIF for GitHub code scanning")
+    p_scan.add_argument("--github-annotations", help="write GitHub Checks annotations JSON")
     p_scan.add_argument("--save-history", help="append scan summary to a SQLite database")
 
     args = parser.parse_args(argv)
@@ -172,6 +205,8 @@ def main(argv=None) -> int:
             return render(args)
         if args.command == "history":
             return history_cmd(args)
+        if args.command == "dashboard":
+            return dashboard_cmd(args)
         return scan(args)
     except SystemExit:
         raise
