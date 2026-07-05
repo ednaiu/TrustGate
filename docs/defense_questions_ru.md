@@ -7,11 +7,12 @@ TrustGate не заменяет эти инструменты - он закры�
 
 - на дефект-профиле генеративного кода (hallucinated imports/kwargs, stubs,
   placeholders): recall TrustGate **0.854**, bandit 0.341, semgrep 0.171;
-- на классических CWE-уязвимостях: TrustGate 0.14, bandit/semgrep 0.28-0.29 -
+- на классических CWE-уязвимостях: TrustGate 0.20, bandit/semgrep 0.28-0.29 -
   здесь сильнее они, и это говорится прямо;
-- по общему F1 среди инструментов с FPR < 5%: TrustGate 0.467 - лучший
-  (bandit 0.455, semgrep 0.417, ruff 0.346); flake8 дает recall 0.80, но
-  помечает 35% чистых production-файлов - как gate непригоден.
+- по общему F1 среди инструментов с FPR < 5%: TrustGate 0.526 - лучший
+  (bandit 0.455, semgrep 0.417, ruff 0.346), при нуле false positives на
+  clean-группе; flake8 дает recall 0.80, но помечает 35% чистых
+  production-файлов - как gate непригоден.
 
 Правильная формула на защите: "TrustGate + bandit/semgrep вместе покрывают
 оба профиля риска; по отдельности каждый слеп на чужом классе дефектов".
@@ -19,7 +20,7 @@ TrustGate не заменяет эти инструменты - он закры�
 ## Где здесь LLM, если инструмент не определяет автора кода?
 
 TrustGate не детектирует "кто писал" - он таргетирует **профиль дефектов**,
-характерный для генеративного кода. 5 из 13 детекторов (D01, D02, D09, D13,
+характерный для генеративного кода. 5 из 14 детекторов (D01, D02, D09, D13,
 D14) построены под этот профиль; ablation показывает, что они дают около
 половины recall. Отчет разбивает findings на `llm_specific` /
 `general_quality`, а бенчмарк подтверждает: именно на этом профиле baseline
@@ -84,7 +85,7 @@ critical finding = BLOCK" имеет precision 1.0 и FPR 0 на clean-груп�
 Три уровня, все воспроизводимы из репозитория:
 
 - `experiment/static_benchmark.py` - регрессионный smoke benchmark детекторов
-  (14 версионированных кейсов);
+  (15 версионированных кейсов);
 - `experiment/benchmark_external.py` - внешний корпус 245 samples, сравнение с
   ruff/flake8/bandit/semgrep, per-slice recall, ablation, FP-анализ; результат
   закоммичен в `experiment/benchmark-result.json`;

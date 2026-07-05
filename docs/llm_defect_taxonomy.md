@@ -19,6 +19,7 @@ TrustGate не заменяет линтеры. Он закрывает проф
 | TG-D12 | suspicious dependency | LLM может придумать пакет в `pyproject.toml` или `requirements.txt` |
 | TG-D13 | hallucinated keyword argument | функция существует, а kwarg - нет: классическая галлюцинация API |
 | TG-D14 | placeholder value | `"YOUR_API_KEY_HERE"` вместо реальной конфигурации доезжает до merge |
+| TG-D15 | insecure runtime default | `mktemp`, `debug=True`, `extractall()` - паттерны из устаревших туториалов, которые LLM продолжает воспроизводить |
 
 ## Чего TrustGate Не Обещает
 

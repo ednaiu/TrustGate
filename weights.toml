@@ -19,6 +19,7 @@ TG-D11 = 12   # tautological assert
 TG-D12 = 15   # suspicious dependency manifest entry
 TG-D13 = 20   # hallucinated keyword argument
 TG-D14 = 10   # placeholder value left in code
+TG-D15 = 12   # insecure runtime default (mktemp, debug=True, extractall)
 
 [thresholds]
 pass = 76     # score >= pass  -> PASS

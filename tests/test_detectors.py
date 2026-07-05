@@ -57,6 +57,28 @@ CASES = [
     ("TG-D10", "if True:\n    x = 1\nelse:\n    x = 2\n", True),
     ("TG-D10", "def f():\n    return 1\n", False),
     ("TG-D10", "def f(x):\n    if x:\n        return 1\n    return 2\n", False),
+    # TG-D03 new: os.system, yaml.load
+    ("TG-D03", "import os\nos.system(cmd)\n", True),
+    ("TG-D03", "import yaml\ndata = yaml.load(raw)\n", True),
+    ("TG-D03", "import yaml\ndata = yaml.load(raw, Loader=yaml.FullLoader)\n", True),
+    ("TG-D03", "import yaml\ndata = yaml.load(raw, Loader=yaml.SafeLoader)\n", False),
+    ("TG-D03", "import yaml\ndata = yaml.safe_load(raw)\n", False),
+    # TG-D06 new: unverified TLS contexts
+    ("TG-D06", "import ssl\nctx = ssl._create_unverified_context()\n", True),
+    ("TG-D06", "import ssl\nopts = {'cert_reqs': ssl.CERT_NONE}\n", True),
+    ("TG-D06", "ctx.check_hostname = False\n", True),
+    ("TG-D06", "ctx.check_hostname = True\n", False),
+    # TG-D07 new: weak randomness and ciphers
+    ("TG-D07", "import random\ntoken = ''.join(random.choice(chars) for _ in range(16))\n", True),
+    ("TG-D07", "import random\ndelay = random.random() * 5\n", False),
+    ("TG-D07", "from Crypto.Cipher import AES\nc = AES.new(key, AES.MODE_ECB)\n", True),
+    # TG-D15 insecure runtime defaults
+    ("TG-D15", "import tempfile\npath = tempfile.mktemp()\n", True),
+    ("TG-D15", "import tempfile\nfd, path = tempfile.mkstemp()\n", False),
+    ("TG-D15", "app.run(debug=True)\n", True),
+    ("TG-D15", "app.run()\n", False),
+    ("TG-D15", "import tarfile\ntarfile.open(p).extractall()\n", True),
+    ("TG-D15", "import tarfile\ntarfile.open(p).extractall(filter='data')\n", False),
     # TG-D13 hallucinated keyword arguments
     ("TG-D13", "import shutil\nshutil.copy(a, b, overwrite=True)\n", True),
     ("TG-D13", "from textwrap import dedent\ndedent(s, strip=True)\n", True),

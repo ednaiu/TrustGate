@@ -80,5 +80,11 @@
   "label": "defective",
   "expected": "TG-D14",
   "code": "import os\n\nAPI_KEY = \"YOUR_API_KEY_HERE\"\n\ndef auth_header():\n    return {\"Authorization\": f\"Bearer {API_KEY}\"}\n"
+ },
+ {
+  "id": "insecure_default_mktemp",
+  "label": "defective",
+  "expected": "TG-D15",
+  "code": "import tempfile\n\ndef make_workfile():\n    return tempfile.mktemp()\n"
  }
 ]

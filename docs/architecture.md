@@ -24,7 +24,7 @@ git repo / project dir  -->  trustgate scan
 
 ## Модули
 
-- `detectors.py` - статические AST-детекторы `TG-D01..TG-D11`, `TG-D13`, `TG-D14`.
+- `detectors.py` - статические AST-детекторы `TG-D01..TG-D11`, `TG-D13..TG-D15`.
 - `known_packages.py` - снапшот top-15000 PyPI (`data/pypi_top_packages.txt`),
   curated import-алиасы и Levenshtein для typo checks.
 - `sandbox.py` - Docker runner для single-file pytest.

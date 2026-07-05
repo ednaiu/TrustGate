@@ -1,5 +1,23 @@
 # История Изменений
 
+## 1.5.0 - 2026-07-05
+
+- Устранены все false positives корпуса v1: сабчек "TODO/FIXME в комментарии"
+  удален из TG-D09 (зрелый OSS-код полон долгоживущих TODO; реальные заглушки
+  ловятся по телу функции, строки "TODO: implement" - через TG-D14). FP на
+  clean-группе: 3 -> 0, precision 0.946 -> 1.0.
+- Подняты security-детекторы высокоточными паттернами: TG-D03 ловит
+  os.system с не-литералом и yaml.load без SafeLoader; TG-D06 -
+  ssl._create_unverified_context, CERT_NONE и check_hostname = False;
+  TG-D07 - random для секретов, DES и MODE_ECB.
+- Новый TG-D15 "insecure runtime defaults": tempfile.mktemp, debug=True,
+  extractall() без фильтрации.
+- Метрики на корпусе v1: F1 0.467 -> 0.526, recall 0.310 -> 0.357, recall на
+  SecurityEval 0.138 -> 0.200 при нуле FP. Бенчмарк и калибровка перегнаны,
+  цифры в docs обновлены.
+- Partial -> REVIEW переформулирован в README как гарантия честности
+  вердикта, а не ограничение.
+
 ## 1.4.0 - 2026-07-05
 
 - Детерминированный TG-D01: снапшот top-15000 PyPI в репозитории, first-party

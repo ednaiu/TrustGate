@@ -20,7 +20,7 @@ python experiment/benchmark_external.py \
 
 | инструмент | precision | recall | F1 | FPR на clean |
 |------------|-----------|--------|-----|--------------|
-| **TrustGate (static)** | 0.946 | 0.310 | **0.467** | 4.1% |
+| **TrustGate (static)** | **1.000** | 0.357 | **0.526** | **0.0%** |
 | bandit 1.9.4 | 0.962 | 0.298 | 0.455 | 2.7% |
 | semgrep 1.168.0 (config auto) | 1.000 | 0.263 | 0.417 | 0.0% |
 | ruff 0.15.20 | 0.973 | 0.211 | 0.346 | 1.4% |
@@ -28,22 +28,26 @@ python experiment/benchmark_external.py \
 
 Как это читать честно:
 
-- Среди инструментов, пригодных как gate (FPR < 5%), TrustGate дает лучший F1.
+- Среди инструментов, пригодных как gate (FPR < 5%), TrustGate дает лучший F1
+  при нулевых false positives на clean-группе.
 - flake8 формально впереди по recall, но помечает **каждый третий чистый
   production-файл** - как merge-gate он непригоден, это style-линтер.
-- semgrep - самый точный, но с наименьшим recall из security-инструментов.
+- Ноль FP - результат на 74 clean-сэмплах корпуса v1, а не гарантия для
+  любого кода.
 
 ## Recall По Срезам: Где Чьи Слепые Зоны
 
 | срез корпуса (defective) | TrustGate | bandit | semgrep | ruff |
 |--------------------------|-----------|--------|---------|------|
-| SecurityEval, 130 CWE-уязвимостей от Copilot | 0.138 | 0.285 | 0.292 | 0.215 |
+| SecurityEval, 130 CWE-уязвимостей от Copilot | 0.200 | 0.285 | 0.292 | 0.215 |
 | Профиль генеративного кода, 41 (hallucinated imports/kwargs, stubs, placeholders, eval) | **0.854** | 0.341 | 0.171 | 0.195 |
 
 Это главный результат позиционирования:
 
 - На классических CWE-уязвимостях (LDAP/XXE/SSRF и т.п.) bandit и semgrep
   сильнее - TrustGate **не претендует заменить их** и должен работать рядом.
+  Широкие классы (XSS, open redirect, path traversal) требуют taint-анализа,
+  которого в TrustGate осознанно нет.
 - На дефект-профиле генеративного кода TrustGate находит 85% дефектов, а
   лучшие baseline - максимум 34%. Этот класс дефектов - слепая зона
   существующих инструментов, и именно его TrustGate закрывает.
@@ -80,23 +84,27 @@ python experiment/build_corpus.py --securityeval /tmp/SecurityEval
 ## Ablation По Детекторам
 
 `experiment/benchmark-result.json` содержит ablation: как падает recall при
-отключении каждого детектора. Топ вкладов на corpus v1: TG-D03 (eval/exec,
--7.6% recall), TG-D09 (stubs, -5.3%), TG-D08 (broad except, -4.7%), TG-D01
-(hallucinated imports, -4.1%), TG-D13 и TG-D14 (по -3.5%). Детекторы
-LLM-профиля (D01, D02, D09, D13, D14) в сумме дают около половины recall.
+отключении каждого детектора. Топ вкладов на corpus v1: TG-D03
+(eval/exec/os.system/yaml.load, -9.9% recall), TG-D09 (stubs, -5.3%), TG-D08
+(broad except, -4.7%), TG-D01 (hallucinated imports, -4.1%), TG-D13 и TG-D14
+(по -3.5%). Детекторы LLM-профиля (D01, D02, D09, D13, D14) в сумме дают
+около половины recall.
 
 ## False Positive Analysis
 
 Блок `false_positive_analysis` в JSON перечисляет каждый ложно помеченный
-clean-сэмпл с инструментом и detector ids. У TrustGate на corpus v1 их 3 - все
-TG-D09 (stub detection) на OSS-файлах с намеренными no-op функциями
-(`fastapi/param_functions.py`, `requests/hooks.py`, `urllib3/exceptions.py`).
-Это известный след эвристики, подавляется inline-комментарием
-`# trustgate: ignore TG-D09`.
+clean-сэмпл с инструментом и detector ids. У TrustGate на corpus v1 их **0**.
+Этот ноль - заработанный: первая версия давала 3 FP, все от сабчека
+"TODO/FIXME в комментарии" (зрелый OSS-код полон долгоживущих TODO -
+`fastapi/param_functions.py`, `requests/hooks.py`, `urllib3/exceptions.py`).
+Сабчек удален: реальные заглушки ловятся по телу функции (TG-D09), строки
+"TODO: implement" - через TG-D14, а recall от удаления не изменился. Это
+пример рабочего цикла false positive analysis -> правка правил. На коде вне
+корпуса FP остаются возможными и подавляются `# trustgate: ignore TG-DXX`.
 
 ## Smoke-Бенчмарк (регрессия детекторов)
 
-Данные: `experiment/static_benchmark_cases.json` (14 кейсов, по одному на
+Данные: `experiment/static_benchmark_cases.json` (15 кейсов, по одному на
 детектор + clean-кейсы). Запуск:
 
 ```bash

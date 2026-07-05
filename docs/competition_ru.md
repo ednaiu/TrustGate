@@ -16,7 +16,7 @@ API и keyword-аргументы, placeholder-значения, заглушк�
 
 Эта идея в проекте **измерена**: на корпусе из 245 samples recall TrustGate на
 дефект-профиле генеративного кода - 0.854 против 0.341 у bandit и 0.171 у
-semgrep, при FPR 4.1% на чистом коде (`docs/benchmark.md`,
+semgrep, при нуле false positives на чистом коде (`docs/benchmark.md`,
 `experiment/benchmark-result.json`).
 
 ## Почему это информационная система
@@ -36,7 +36,7 @@ semgrep, при FPR 4.1% на чистом коде (`docs/benchmark.md`,
 
 ## Что уже сделано
 
-- 13 статических детекторов (`TG-D01..TG-D11`, `TG-D13`, `TG-D14`) плюс
+- 14 статических детекторов (`TG-D01..TG-D11`, `TG-D13..TG-D15`) плюс
   dependency manifest scan `TG-D12`.
 - Детерминированный вердикт: hallucinated imports сверяются с закоммиченным
   снапшотом top-15000 PyPI и first-party модулями репозитория, а не с локальным
@@ -137,7 +137,7 @@ trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.htm
   копии репозитория, а не в исходном дереве.
 - Полная поддержка сейчас только для Python.
 - На классических CWE-уязвимостях recall статического слоя ниже bandit/semgrep
-  (0.14 против 0.28-0.29) - TrustGate дополняет их, а не заменяет; это прямо
+  (0.20 против 0.28-0.29) - TrustGate дополняет их, а не заменяет; это прямо
   показано в `docs/benchmark.md`.
 
 ## Слабые места, которые я понимаю
@@ -146,8 +146,9 @@ trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.htm
   SecurityEval унаследован от конструкции датасета; срез дефектов генеративного
   профиля - контролируемые инъекции в реальный LLM-код. Оба факта описаны в
   provenance, схема пересчета зафиксирована.
-- 3 известных false positives - TG-D09 (stub detection) на OSS-файлах с
-  намеренными no-op функциями; подавляются inline-комментарием.
+- Ноль false positives на корпусе v1 - результат на 74 clean-сэмплах (и он
+  заработан: 3 FP первой версии разобраны и устранены через FP-анализ), а не
+  гарантия для любого кода; подавление - inline-комментарием.
 - TG-D02/TG-D13 сверяют атрибуты и сигнатуры со stdlib той версии Python, на
   которой запущен TrustGate; version-guarded код (`sys.version_info`)
   исключается из проверки.

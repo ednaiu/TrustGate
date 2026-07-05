@@ -31,7 +31,7 @@ reference-тестами, clean OSS-файлы - см. `docs/benchmark.md`):
 
 | инструмент | precision | recall | F1 | FPR на clean | recall на профиле генеративного кода |
 |------------|-----------|--------|-----|--------------|--------------------------------------|
-| **TrustGate (static)** | 0.946 | 0.310 | **0.467** | 4.1% | **0.854** |
+| **TrustGate (static)** | **1.000** | 0.357 | **0.526** | **0.0%** | **0.854** |
 | bandit | 0.962 | 0.298 | 0.455 | 2.7% | 0.341 |
 | semgrep | 1.000 | 0.263 | 0.417 | 0.0% | 0.171 |
 | ruff | 0.973 | 0.211 | 0.346 | 1.4% | 0.195 |
@@ -45,7 +45,7 @@ TrustGate не заменяет bandit/semgrep (на классических CW
 
 | слой | что делает |
 |------|------------|
-| L1 static | 13 детекторов `TG-D01..TG-D11`, `TG-D13`, `TG-D14`: hallucinated imports/API/kwargs, `eval/exec`, SQL string building, `shell=True`, `verify=False`, weak hashes, broad except, stubs, dead code, tautological asserts, placeholders |
+| L1 static | 14 детекторов `TG-D01..TG-D11`, `TG-D13..TG-D15`: hallucinated imports/API/kwargs, `eval/exec/os.system/yaml.load`, SQL string building, `shell=True`, отключенная TLS-верификация, weak hashes/random/ECB, broad except, stubs, dead code, tautological asserts, placeholders, insecure defaults |
 | manifest scan | `TG-D12`: подозрительные зависимости в `pyproject.toml` и `requirements*.txt` |
 | L2 dynamic | запускает pytest в Docker sandbox для single-file flow |
 | L3 mutation | генерирует AST-мутанты и проверяет, убивают ли их тесты; работает и для single-file flow, и для repo-flow через `--project-mutation` |
@@ -60,6 +60,10 @@ sandbox или project tests через доверенную команду CI.
 top-15000 PyPI-пакетов и first-party модулями репозитория, а не с тем, что
 случайно установлено на машине. Учет локального окружения - опциональный флаг
 `--trust-local-env`.
+
+Гарантия честности вердикта: partial analysis никогда не продается как PASS.
+Если project tests или mutation layer не запускались, результат понижается до
+REVIEW - неполная проверка не может выглядеть как полная.
 
 ## Установка И Запуск
 
@@ -118,7 +122,7 @@ make demo-report
 
 ## Статус
 
-- [x] 13 статических детекторов (`TG-D01..TG-D11`, `TG-D13`, `TG-D14`)
+- [x] 14 статических детекторов (`TG-D01..TG-D11`, `TG-D13..TG-D15`)
   + manifest scan `TG-D12`;
 - [x] детерминированный вердикт: снапшот top-15000 PyPI + first-party модули;
 - [x] Docker sandbox для single-file pytest;
@@ -155,9 +159,9 @@ make demo-report
 - Корпус v1 - 245 samples; его состав и известный шум меток описаны в
   `docs/benchmark.md`. Это рабочая калибровка, а не финальное исследование.
 - На классических CWE-уязвимостях (SecurityEval) recall статического слоя
-  0.14 - ниже bandit/semgrep. TrustGate - дополнительный слой рядом с ними,
-  а не замена.
-- Некоторые проверки эвристические: 3 известных false positives на корпусе -
-  TG-D09 на OSS-файлах с намеренными no-op функциями.
-- Partial analysis не должен продаваться как PASS: если не выполнены project
-  tests или mutation layer, результат понижается до REVIEW.
+  0.20 - ниже bandit/semgrep (0.28-0.29): широкие классы вроде XSS, open
+  redirect и path traversal требуют taint-анализа, которого в TrustGate нет
+  осознанно. TrustGate - дополнительный слой рядом с ними, а не замена.
+- Ноль false positives на корпусе v1 - результат на 74 clean-сэмплах, а не
+  гарантия: детекторы эвристические, на другом коде FP возможны и
+  подавляются `# trustgate: ignore TG-DXX`.

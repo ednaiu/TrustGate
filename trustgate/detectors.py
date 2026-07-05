@@ -156,6 +156,11 @@ def check_attributes(tree, source, ctx):  # TG-D02
     return unique
 
 
+def _is_attr_call(node, owner: str, attr: str) -> bool:
+    return (isinstance(node.func, ast.Attribute) and node.func.attr == attr
+            and isinstance(node.func.value, ast.Name) and node.func.value.id == owner)
+
+
 def check_dangerous_exec(tree, source, ctx):  # TG-D03
     out = []
     for node in ast.walk(tree):
@@ -166,10 +171,23 @@ def check_dangerous_exec(tree, source, ctx):  # TG-D03
             out.append(Finding(
                 "TG-D03", "minor" if literal else "critical", node.lineno,
                 f"{node.func.id}() {'on a literal' if literal else 'on non-literal data'}"))
-        elif isinstance(node.func, ast.Attribute) and node.func.attr == "loads":
-            if isinstance(node.func.value, ast.Name) and node.func.value.id == "pickle":
+        elif _is_attr_call(node, "pickle", "loads"):
+            out.append(Finding("TG-D03", "critical", node.lineno,
+                               "pickle.loads() on untrusted data allows code execution"))
+        elif _is_attr_call(node, "os", "system"):
+            literal = node.args and isinstance(node.args[0], ast.Constant)
+            out.append(Finding(
+                "TG-D03", "minor" if literal else "critical", node.lineno,
+                "os.system() " + ("on a literal" if literal
+                                  else "with a non-literal command allows injection")))
+        elif _is_attr_call(node, "yaml", "load"):
+            loader = next((kw.value for kw in node.keywords if kw.arg == "Loader"), None)
+            loader_name = loader.attr if isinstance(loader, ast.Attribute) \
+                else getattr(loader, "id", "")
+            if not loader_name.startswith("Safe"):
                 out.append(Finding("TG-D03", "critical", node.lineno,
-                                   "pickle.loads() on untrusted data allows code execution"))
+                                   "yaml.load() without SafeLoader can execute code, "
+                                   "use yaml.safe_load()"))
     return out
 
 
@@ -217,12 +235,27 @@ def check_shell_true(tree, source, ctx):  # TG-D05
 def check_tls_verify(tree, source, ctx):  # TG-D06
     out = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        for kw in node.keywords:
-            if kw.arg == "verify" and isinstance(kw.value, ast.Constant) and kw.value.value is False:
+        if isinstance(node, ast.Call):
+            for kw in node.keywords:
+                if kw.arg == "verify" and isinstance(kw.value, ast.Constant) \
+                        and kw.value.value is False:
+                    out.append(Finding("TG-D06", "major", node.lineno,
+                                       "TLS certificate verification disabled (verify=False)"))
+            if isinstance(node.func, ast.Attribute) \
+                    and node.func.attr == "_create_unverified_context":
                 out.append(Finding("TG-D06", "major", node.lineno,
-                                   "TLS certificate verification disabled (verify=False)"))
+                                   "ssl._create_unverified_context() disables "
+                                   "certificate verification"))
+        elif isinstance(node, ast.Attribute) and node.attr == "CERT_NONE":
+            out.append(Finding("TG-D06", "major", node.lineno,
+                               "ssl.CERT_NONE disables certificate verification"))
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Attribute) and target.attr == "check_hostname" \
+                        and isinstance(node.value, ast.Constant) and node.value.value is False:
+                    out.append(Finding("TG-D06", "major", node.lineno,
+                                       "hostname verification disabled "
+                                       "(check_hostname = False)"))
     return out
 
 
@@ -234,17 +267,35 @@ def _contains_weak_hash(node):
     return None
 
 
+def _contains_random_call(node):
+    for sub in ast.walk(node):
+        if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+                and isinstance(sub.func.value, ast.Name) and sub.func.value.id == "random"):
+            return sub.lineno
+    return None
+
+
 def check_weak_hash(tree, source, ctx):  # TG-D07
     out = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        names = [t.id.lower() for t in node.targets if isinstance(t, ast.Name)]
-        if any(w in n for n in names for w in SECRET_WORDS):
-            line = _contains_weak_hash(node.value)
-            if line:
-                out.append(Finding("TG-D07", "major", line,
-                                   "md5/sha1 used for a secret, use a KDF (bcrypt/argon2)"))
+        if isinstance(node, ast.Assign):
+            names = [t.id.lower() for t in node.targets if isinstance(t, ast.Name)]
+            if any(w in n for n in names for w in SECRET_WORDS):
+                line = _contains_weak_hash(node.value)
+                if line:
+                    out.append(Finding("TG-D07", "major", line,
+                                       "md5/sha1 used for a secret, use a KDF (bcrypt/argon2)"))
+                line = _contains_random_call(node.value)
+                if line:
+                    out.append(Finding("TG-D07", "major", line,
+                                       "random module is not cryptographically secure, "
+                                       "use secrets for tokens/keys"))
+        elif isinstance(node, ast.Attribute) and node.attr == "MODE_ECB":
+            out.append(Finding("TG-D07", "major", node.lineno,
+                               "ECB cipher mode leaks plaintext structure"))
+        elif isinstance(node, ast.Call) and _is_attr_call(node, "DES", "new"):
+            out.append(Finding("TG-D07", "major", node.lineno,
+                               "DES is a broken cipher, use AES-GCM"))
     return out
 
 
@@ -304,9 +355,10 @@ def check_stubs(tree, source, ctx):  # TG-D09
         if all(is_stub_stmt(s) for s in body):
             out.append(Finding("TG-D09", "major", node.lineno,
                                f"function '{node.name}' is a stub, not an implementation"))
-    for tok in _comments(source):
-        if any(m in tok.string for m in ("TODO", "FIXME")):
-            out.append(Finding("TG-D09", "minor", tok.start[0], "TODO/FIXME marker left in code"))
+    # note: a bare TODO/FIXME comment is deliberately NOT a finding. Measured on
+    # the external corpus it produced every TrustGate false positive (mature OSS
+    # carries long-lived TODOs) and zero extra recall: real stubs are caught by
+    # their body above, and "TODO: implement" strings by TG-D14.
     return out
 
 
@@ -456,6 +508,29 @@ def check_placeholders(tree, source, ctx):  # TG-D14
     return out
 
 
+def check_insecure_defaults(tree, source, ctx):  # TG-D15
+    """Insecure runtime defaults LLMs copy from outdated examples."""
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if _is_attr_call(node, "tempfile", "mktemp"):
+            out.append(Finding("TG-D15", "major", node.lineno,
+                               "tempfile.mktemp() is race-prone, use mkstemp()"))
+        elif node.func.attr == "run":
+            for kw in node.keywords:
+                if kw.arg == "debug" and isinstance(kw.value, ast.Constant) \
+                        and kw.value.value is True:
+                    out.append(Finding("TG-D15", "major", node.lineno,
+                                       "debug=True exposes an interactive debugger "
+                                       "in production"))
+        elif node.func.attr == "extractall" and not node.args and not node.keywords:
+            out.append(Finding("TG-D15", "minor", node.lineno,
+                               "extractall() without member filtering allows "
+                               "path traversal from a crafted archive"))
+    return out
+
+
 def check_tautological_asserts(tree, source, ctx):  # TG-D11
     out = []
     for node in ast.walk(tree):
@@ -485,14 +560,15 @@ DETECTORS = [
     check_tautological_asserts,
     check_kwargs,
     check_placeholders,
+    check_insecure_defaults,
 ]
 
 # TG-D12 (dependency manifests) lives in scan.py: it needs manifest files,
-# not a Python AST. Together: 13 static detectors + 1 manifest detector.
+# not a Python AST. Together: 14 static detectors + 1 manifest detector.
 DETECTOR_CODES = (
     "TG-D01", "TG-D02", "TG-D03", "TG-D04", "TG-D05",
     "TG-D06", "TG-D07", "TG-D08", "TG-D09", "TG-D10", "TG-D11",
-    "TG-D13", "TG-D14",
+    "TG-D13", "TG-D14", "TG-D15",
 )
 
 # Detectors targeting the defect profile characteristic of generated code
