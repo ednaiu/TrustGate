@@ -1,0 +1,440 @@
+{
+  "status": "ok",
+  "samples": 245,
+  "minimum_required_samples": 100,
+  "corpus_composition": {
+    "defective": 171,
+    "clean": 74,
+    "datasets": {
+      "SecurityEval": 130,
+      "trustgate-tasks": 46,
+      "injected-defects": 41,
+      "clean-oss": 28
+    }
+  },
+  "metrics": {
+    "trustgate": {
+      "tp": 53,
+      "tn": 71,
+      "fp": 3,
+      "fn": 118,
+      "precision": 0.9464,
+      "recall": 0.3099,
+      "f1": 0.467,
+      "fpr": 0.0405
+    },
+    "baselines": {
+      "ruff": {
+        "available": true,
+        "version": "ruff 0.15.20",
+        "tp": 36,
+        "tn": 73,
+        "fp": 1,
+        "fn": 135,
+        "precision": 0.973,
+        "recall": 0.2105,
+        "f1": 0.3462,
+        "fpr": 0.0135
+      },
+      "flake8": {
+        "available": true,
+        "version": "7.3.0 (mccabe: 0.7.0, pycodestyle: 2.14.0, pyflakes: 3.4.0) CPython 3.12.13 on",
+        "tp": 137,
+        "tn": 48,
+        "fp": 26,
+        "fn": 34,
+        "precision": 0.8405,
+        "recall": 0.8012,
+        "f1": 0.8204,
+        "fpr": 0.3514
+      },
+      "bandit": {
+        "available": true,
+        "version": "bandit 1.9.4",
+        "tp": 51,
+        "tn": 72,
+        "fp": 2,
+        "fn": 120,
+        "precision": 0.9623,
+        "recall": 0.2982,
+        "f1": 0.4554,
+        "fpr": 0.027
+      },
+      "semgrep": {
+        "available": true,
+        "version": "1.168.0",
+        "tp": 45,
+        "tn": 74,
+        "fp": 0,
+        "fn": 126,
+        "precision": 1.0,
+        "recall": 0.2632,
+        "f1": 0.4167,
+        "fpr": 0.0
+      }
+    }
+  },
+  "per_dataset_recall": {
+    "SecurityEval": {
+      "defective_samples": 130,
+      "trustgate": 0.1385,
+      "ruff": 0.2154,
+      "flake8": 0.9231,
+      "bandit": 0.2846,
+      "semgrep": 0.2923
+    },
+    "injected-defects": {
+      "defective_samples": 41,
+      "trustgate": 0.8537,
+      "ruff": 0.1951,
+      "flake8": 0.4146,
+      "bandit": 0.3415,
+      "semgrep": 0.1707
+    }
+  },
+  "ablation": {
+    "TG-D01": {
+      "tp": 46,
+      "tn": 71,
+      "fp": 3,
+      "fn": 125,
+      "precision": 0.9388,
+      "recall": 0.269,
+      "f1": 0.4182,
+      "fpr": 0.0405,
+      "delta_precision": 0.0076,
+      "delta_recall": 0.0409,
+      "delta_f1": 0.0488
+    },
+    "TG-D02": {
+      "tp": 52,
+      "tn": 71,
+      "fp": 3,
+      "fn": 119,
+      "precision": 0.9455,
+      "recall": 0.3041,
+      "f1": 0.4602,
+      "fpr": 0.0405,
+      "delta_precision": 0.0009,
+      "delta_recall": 0.0058,
+      "delta_f1": 0.0068
+    },
+    "TG-D03": {
+      "tp": 40,
+      "tn": 71,
+      "fp": 3,
+      "fn": 131,
+      "precision": 0.9302,
+      "recall": 0.2339,
+      "f1": 0.3738,
+      "fpr": 0.0405,
+      "delta_precision": 0.0162,
+      "delta_recall": 0.076,
+      "delta_f1": 0.0932
+    },
+    "TG-D04": {
+      "tp": 53,
+      "tn": 71,
+      "fp": 3,
+      "fn": 118,
+      "precision": 0.9464,
+      "recall": 0.3099,
+      "f1": 0.467,
+      "fpr": 0.0405,
+      "delta_precision": 0.0,
+      "delta_recall": 0.0,
+      "delta_f1": 0.0
+    },
+    "TG-D05": {
+      "tp": 52,
+      "tn": 71,
+      "fp": 3,
+      "fn": 119,
+      "precision": 0.9455,
+      "recall": 0.3041,
+      "f1": 0.4602,
+      "fpr": 0.0405,
+      "delta_precision": 0.0009,
+      "delta_recall": 0.0058,
+      "delta_f1": 0.0068
+    },
+    "TG-D06": {
+      "tp": 53,
+      "tn": 71,
+      "fp": 3,
+      "fn": 118,
+      "precision": 0.9464,
+      "recall": 0.3099,
+      "f1": 0.467,
+      "fpr": 0.0405,
+      "delta_precision": 0.0,
+      "delta_recall": 0.0,
+      "delta_f1": 0.0
+    },
+    "TG-D07": {
+      "tp": 53,
+      "tn": 71,
+      "fp": 3,
+      "fn": 118,
+      "precision": 0.9464,
+      "recall": 0.3099,
+      "f1": 0.467,
+      "fpr": 0.0405,
+      "delta_precision": 0.0,
+      "delta_recall": 0.0,
+      "delta_f1": 0.0
+    },
+    "TG-D08": {
+      "tp": 45,
+      "tn": 71,
+      "fp": 3,
+      "fn": 126,
+      "precision": 0.9375,
+      "recall": 0.2632,
+      "f1": 0.411,
+      "fpr": 0.0405,
+      "delta_precision": 0.0089,
+      "delta_recall": 0.0467,
+      "delta_f1": 0.056
+    },
+    "TG-D09": {
+      "tp": 44,
+      "tn": 74,
+      "fp": 0,
+      "fn": 127,
+      "precision": 1.0,
+      "recall": 0.2573,
+      "f1": 0.4093,
+      "fpr": 0.0,
+      "delta_precision": -0.0536,
+      "delta_recall": 0.0526,
+      "delta_f1": 0.0577
+    },
+    "TG-D10": {
+      "tp": 51,
+      "tn": 71,
+      "fp": 3,
+      "fn": 120,
+      "precision": 0.9444,
+      "recall": 0.2982,
+      "f1": 0.4533,
+      "fpr": 0.0405,
+      "delta_precision": 0.002,
+      "delta_recall": 0.0117,
+      "delta_f1": 0.0137
+    },
+    "TG-D11": {
+      "tp": 53,
+      "tn": 71,
+      "fp": 3,
+      "fn": 118,
+      "precision": 0.9464,
+      "recall": 0.3099,
+      "f1": 0.467,
+      "fpr": 0.0405,
+      "delta_precision": 0.0,
+      "delta_recall": 0.0,
+      "delta_f1": 0.0
+    },
+    "TG-D13": {
+      "tp": 47,
+      "tn": 71,
+      "fp": 3,
+      "fn": 124,
+      "precision": 0.94,
+      "recall": 0.2749,
+      "f1": 0.4253,
+      "fpr": 0.0405,
+      "delta_precision": 0.0064,
+      "delta_recall": 0.035,
+      "delta_f1": 0.0417
+    },
+    "TG-D14": {
+      "tp": 47,
+      "tn": 71,
+      "fp": 3,
+      "fn": 124,
+      "precision": 0.94,
+      "recall": 0.2749,
+      "f1": 0.4253,
+      "fpr": 0.0405,
+      "delta_precision": 0.0064,
+      "delta_recall": 0.035,
+      "delta_f1": 0.0417
+    }
+  },
+  "false_positive_analysis": [
+    {
+      "id": "oss_fastapi__param_functions",
+      "tool": "trustgate",
+      "detectors": [
+        "TG-D09",
+        "TG-D09",
+        "TG-D09",
+        "TG-D09",
+        "TG-D09",
+        "TG-D09",
+        "TG-D09"
+      ]
+    },
+    {
+      "id": "oss_requests__hooks",
+      "tool": "trustgate",
+      "detectors": [
+        "TG-D09"
+      ]
+    },
+    {
+      "id": "oss_urllib3__exceptions",
+      "tool": "trustgate",
+      "detectors": [
+        "TG-D09"
+      ]
+    },
+    {
+      "id": "llm_claude-sonnet_word_freq",
+      "tool": "ruff",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_balanced",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_chunk_list",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_fibonacci",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_group_anagrams",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_merge_intervals",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_moving_average",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_parse_query",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_rle",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_roman_to_int",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_slugify",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-haiku_word_freq",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-sonnet_validate_date",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "llm_claude-sonnet_word_freq",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_click__formatting",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_fastapi__exceptions",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_fastapi__param_functions",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_httpx___exceptions",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_jinja__exceptions",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_more-itertools__recipes",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_packaging__utils",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_requests___internal_utils",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_requests__api",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_requests__status_codes",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_requests__structures",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_rich__color_triplet",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_urllib3__exceptions",
+      "tool": "flake8",
+      "detectors": []
+    },
+    {
+      "id": "oss_more-itertools__recipes",
+      "tool": "bandit",
+      "detectors": []
+    },
+    {
+      "id": "oss_requests___internal_utils",
+      "tool": "bandit",
+      "detectors": []
+    }
+  ]
+}

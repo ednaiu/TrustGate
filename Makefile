@@ -1,4 +1,4 @@
-.PHONY: test coverage scan benchmark benchmark-external dashboard demo-report experiment demo
+.PHONY: test coverage scan benchmark benchmark-external calibrate dashboard demo-report experiment demo
 
 test:
 	pytest -q
@@ -13,7 +13,10 @@ benchmark:
 	python experiment/static_benchmark.py
 
 benchmark-external:
-	python experiment/benchmark_external.py --corpus experiment/static_benchmark_cases.json --out benchmark-external.json
+	python experiment/benchmark_external.py --corpus experiment/corpus/corpus.json --out experiment/benchmark-result.json
+
+calibrate:
+	python experiment/calibrate.py --corpus experiment/corpus/corpus.json --out experiment/calibration-result.json
 
 dashboard:
 	trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.html

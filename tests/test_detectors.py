@@ -1,6 +1,7 @@
 import pytest
 
-from trustgate.detectors import run_static
+from trustgate.detectors import ScanContext, run_static
+from trustgate.known_packages import closest_popular, is_known
 
 # (detector, snippet, should_fire) -- two positive and two negative cases each
 CASES = [
@@ -56,6 +57,18 @@ CASES = [
     ("TG-D10", "if True:\n    x = 1\nelse:\n    x = 2\n", True),
     ("TG-D10", "def f():\n    return 1\n", False),
     ("TG-D10", "def f(x):\n    if x:\n        return 1\n    return 2\n", False),
+    # TG-D13 hallucinated keyword arguments
+    ("TG-D13", "import shutil\nshutil.copy(a, b, overwrite=True)\n", True),
+    ("TG-D13", "from textwrap import dedent\ndedent(s, strip=True)\n", True),
+    ("TG-D13", "import shutil\nshutil.copy(a, b, follow_symlinks=False)\n", False),
+    ("TG-D13", "import json\njson.dumps(obj, indent=2)\n", False),
+    ("TG-D13", "import subprocess\nsubprocess.run(cmd, check=True, capture_output=True)\n", False),
+    # TG-D14 placeholder artifacts
+    ("TG-D14", 'API_KEY = "your-api-key"\n', True),  # trustgate: ignore TG-D14
+    ("TG-D14", 'token = "YOUR_API_KEY_HERE"\n', True),  # trustgate: ignore TG-D14
+    ("TG-D14", 'conf = "<your password here>"\n', True),  # trustgate: ignore TG-D14
+    ("TG-D14", 'url = "https://api.example.com/v1"\n', False),
+    ("TG-D14", 'msg = "your order has shipped"\n', False),
     # TG-D11 tautological asserts
     ("TG-D11", "assert True\n", True),
     ("TG-D11", "assert f(x) == f(x)\n", True),
@@ -94,3 +107,30 @@ def test_inline_ignore_suppresses_one_detector():
 def test_todo_inside_string_is_not_comment():
     src = 'template = "# TODO generated sample\\n"\n'
     assert not [f for f in run_static(src) if f.detector == "TG-D09"]
+
+
+# --- TG-D01 determinism (the verdict must not depend on the local env) ---
+
+def test_d01_verdict_does_not_depend_on_local_env():
+    # tomli is installed in some envs and not in others; the snapshot decides
+    for module in ("tomli", "pytest", "zxqqjkwm"):
+        default = is_known(module)
+        assert default == is_known(module, trust_local_env=False)
+
+
+def test_d01_snapshot_covers_popular_packages():
+    for module in ("requests", "bs4", "PIL", "sklearn", "boto3"):
+        assert is_known(module), module
+
+
+def test_d01_first_party_modules_suppress_finding():
+    src = "import trustgate_demo_app\n"
+    assert [f for f in run_static(src) if f.detector == "TG-D01"]
+    ctx = ScanContext(known_modules=frozenset({"trustgate_demo_app"}))
+    assert not [f for f in run_static(src, ctx=ctx) if f.detector == "TG-D01"]
+
+
+def test_typosquat_needs_five_chars():
+    # short names are within distance 2 of half of PyPI: never call typosquat
+    assert closest_popular("jso") is None
+    assert closest_popular("requsets") is not None

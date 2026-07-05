@@ -27,3 +27,4 @@ def test_external_benchmark_marks_missing_large_corpus():
     assert result["status"] == "needs_corpus"
     assert result["samples"] == 2
     assert "trustgate" in result["metrics"]
+    assert "ablation" in result

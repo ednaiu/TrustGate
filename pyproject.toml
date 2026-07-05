@@ -4,8 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trustgate"
-version = "1.3.0"
-description = "Trust scoring for LLM-generated Python code: static checks, sandboxed tests, mutation analysis"
+version = "1.4.0"
+description = "Trust scoring for Python code with a generated-code defect profile: static checks, sandboxed tests, mutation analysis"
+authors = [{ name = "Eva Iusupova" }]
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [

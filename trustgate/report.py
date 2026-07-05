@@ -1,10 +1,19 @@
 import json
 from html import escape
 
+from .detectors import LLM_SPECIFIC_DETECTORS
+
 REPORT_VERSION = "1.0"
 
 
+def finding_groups(findings: list[dict]) -> dict:
+    """Split findings into the generated-code defect profile vs general quality."""
+    llm = sum(1 for f in findings if f["detector"] in LLM_SPECIFIC_DETECTORS)
+    return {"llm_specific": llm, "general_quality": len(findings) - llm}
+
+
 def build(target, raw_score, score, verdict, partial, findings, dynamic, mutation, timing_ms):
+    items = [f.to_dict() for f in findings]
     return {
         "version": REPORT_VERSION,
         "target": str(target),
@@ -12,8 +21,9 @@ def build(target, raw_score, score, verdict, partial, findings, dynamic, mutatio
         "raw_score": raw_score,
         "verdict": verdict,
         "partial": partial,
+        "finding_groups": finding_groups(items),
         "layers": {
-            "static": {"ran": True, "findings": [f.to_dict() for f in findings]},
+            "static": {"ran": True, "findings": items},
             "dynamic": dynamic or {"ran": False, "reason": "disabled"},
             "mutation": mutation or {"ran": False, "reason": "disabled"},
         },
@@ -30,6 +40,11 @@ def to_markdown(report: dict) -> str:
     ]
     findings = report["layers"]["static"]["findings"]
     if findings:
+        groups = report.get("finding_groups") or finding_groups(findings)
+        lines.append(
+            f"Findings: {groups['llm_specific']} generated-code specific, "
+            f"{groups['general_quality']} general quality")
+        lines.append("")
         lines.append("| line | detector | severity | message | -pts |")
         lines.append("|------|----------|----------|---------|------|")
         top = sorted(findings, key=lambda f: -f["penalty"])[:5]

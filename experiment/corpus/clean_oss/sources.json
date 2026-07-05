@@ -1,0 +1,226 @@
+[
+ {
+  "file": "requests__structures.py",
+  "repo": "psf/requests",
+  "ref": "v2.32.3",
+  "path": "src/requests/structures.py",
+  "license": "Apache-2.0",
+  "url": "https://raw.githubusercontent.com/psf/requests/v2.32.3/src/requests/structures.py"
+ },
+ {
+  "file": "requests__hooks.py",
+  "repo": "psf/requests",
+  "ref": "v2.32.3",
+  "path": "src/requests/hooks.py",
+  "license": "Apache-2.0",
+  "url": "https://raw.githubusercontent.com/psf/requests/v2.32.3/src/requests/hooks.py"
+ },
+ {
+  "file": "requests__status_codes.py",
+  "repo": "psf/requests",
+  "ref": "v2.32.3",
+  "path": "src/requests/status_codes.py",
+  "license": "Apache-2.0",
+  "url": "https://raw.githubusercontent.com/psf/requests/v2.32.3/src/requests/status_codes.py"
+ },
+ {
+  "file": "requests___internal_utils.py",
+  "repo": "psf/requests",
+  "ref": "v2.32.3",
+  "path": "src/requests/_internal_utils.py",
+  "license": "Apache-2.0",
+  "url": "https://raw.githubusercontent.com/psf/requests/v2.32.3/src/requests/_internal_utils.py"
+ },
+ {
+  "file": "requests__api.py",
+  "repo": "psf/requests",
+  "ref": "v2.32.3",
+  "path": "src/requests/api.py",
+  "license": "Apache-2.0",
+  "url": "https://raw.githubusercontent.com/psf/requests/v2.32.3/src/requests/api.py"
+ },
+ {
+  "file": "flask__signals.py",
+  "repo": "pallets/flask",
+  "ref": "3.0.3",
+  "path": "src/flask/signals.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/flask/3.0.3/src/flask/signals.py"
+ },
+ {
+  "file": "flask__globals.py",
+  "repo": "pallets/flask",
+  "ref": "3.0.3",
+  "path": "src/flask/globals.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/flask/3.0.3/src/flask/globals.py"
+ },
+ {
+  "file": "flask__logging.py",
+  "repo": "pallets/flask",
+  "ref": "3.0.3",
+  "path": "src/flask/logging.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/flask/3.0.3/src/flask/logging.py"
+ },
+ {
+  "file": "click__globals.py",
+  "repo": "pallets/click",
+  "ref": "8.1.7",
+  "path": "src/click/globals.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/click/8.1.7/src/click/globals.py"
+ },
+ {
+  "file": "click___textwrap.py",
+  "repo": "pallets/click",
+  "ref": "8.1.7",
+  "path": "src/click/_textwrap.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/click/8.1.7/src/click/_textwrap.py"
+ },
+ {
+  "file": "click__formatting.py",
+  "repo": "pallets/click",
+  "ref": "8.1.7",
+  "path": "src/click/formatting.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/click/8.1.7/src/click/formatting.py"
+ },
+ {
+  "file": "itsdangerous__encoding.py",
+  "repo": "pallets/itsdangerous",
+  "ref": "2.2.0",
+  "path": "src/itsdangerous/encoding.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/itsdangerous/2.2.0/src/itsdangerous/encoding.py"
+ },
+ {
+  "file": "itsdangerous__exc.py",
+  "repo": "pallets/itsdangerous",
+  "ref": "2.2.0",
+  "path": "src/itsdangerous/exc.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/itsdangerous/2.2.0/src/itsdangerous/exc.py"
+ },
+ {
+  "file": "jinja__exceptions.py",
+  "repo": "pallets/jinja",
+  "ref": "3.1.4",
+  "path": "src/jinja2/exceptions.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/jinja/3.1.4/src/jinja2/exceptions.py"
+ },
+ {
+  "file": "jinja__optimizer.py",
+  "repo": "pallets/jinja",
+  "ref": "3.1.4",
+  "path": "src/jinja2/optimizer.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/pallets/jinja/3.1.4/src/jinja2/optimizer.py"
+ },
+ {
+  "file": "httpx___status_codes.py",
+  "repo": "encode/httpx",
+  "ref": "0.27.2",
+  "path": "httpx/_status_codes.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/encode/httpx/0.27.2/httpx/_status_codes.py"
+ },
+ {
+  "file": "httpx___exceptions.py",
+  "repo": "encode/httpx",
+  "ref": "0.27.2",
+  "path": "httpx/_exceptions.py",
+  "license": "BSD-3-Clause",
+  "url": "https://raw.githubusercontent.com/encode/httpx/0.27.2/httpx/_exceptions.py"
+ },
+ {
+  "file": "rich__color_triplet.py",
+  "repo": "Textualize/rich",
+  "ref": "v13.9.4",
+  "path": "rich/color_triplet.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/Textualize/rich/v13.9.4/rich/color_triplet.py"
+ },
+ {
+  "file": "rich__errors.py",
+  "repo": "Textualize/rich",
+  "ref": "v13.9.4",
+  "path": "rich/errors.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/Textualize/rich/v13.9.4/rich/errors.py"
+ },
+ {
+  "file": "attrs___config.py",
+  "repo": "python-attrs/attrs",
+  "ref": "24.2.0",
+  "path": "src/attr/_config.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/python-attrs/attrs/24.2.0/src/attr/_config.py"
+ },
+ {
+  "file": "attrs__exceptions.py",
+  "repo": "python-attrs/attrs",
+  "ref": "24.2.0",
+  "path": "src/attr/exceptions.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/python-attrs/attrs/24.2.0/src/attr/exceptions.py"
+ },
+ {
+  "file": "fastapi__exceptions.py",
+  "repo": "tiangolo/fastapi",
+  "ref": "0.115.4",
+  "path": "fastapi/exceptions.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/tiangolo/fastapi/0.115.4/fastapi/exceptions.py"
+ },
+ {
+  "file": "fastapi__staticfiles.py",
+  "repo": "tiangolo/fastapi",
+  "ref": "0.115.4",
+  "path": "fastapi/staticfiles.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/tiangolo/fastapi/0.115.4/fastapi/staticfiles.py"
+ },
+ {
+  "file": "fastapi__param_functions.py",
+  "repo": "tiangolo/fastapi",
+  "ref": "0.115.4",
+  "path": "fastapi/param_functions.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/tiangolo/fastapi/0.115.4/fastapi/param_functions.py"
+ },
+ {
+  "file": "packaging___structures.py",
+  "repo": "pypa/packaging",
+  "ref": "24.2",
+  "path": "src/packaging/_structures.py",
+  "license": "Apache-2.0/BSD",
+  "url": "https://raw.githubusercontent.com/pypa/packaging/24.2/src/packaging/_structures.py"
+ },
+ {
+  "file": "packaging__utils.py",
+  "repo": "pypa/packaging",
+  "ref": "24.2",
+  "path": "src/packaging/utils.py",
+  "license": "Apache-2.0/BSD",
+  "url": "https://raw.githubusercontent.com/pypa/packaging/24.2/src/packaging/utils.py"
+ },
+ {
+  "file": "more-itertools__recipes.py",
+  "repo": "more-itertools/more-itertools",
+  "ref": "v10.5.0",
+  "path": "more_itertools/recipes.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/more-itertools/more-itertools/v10.5.0/more_itertools/recipes.py"
+ },
+ {
+  "file": "urllib3__exceptions.py",
+  "repo": "urllib3/urllib3",
+  "ref": "2.2.3",
+  "path": "src/urllib3/exceptions.py",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/urllib3/urllib3/2.2.3/src/urllib3/exceptions.py"
+ }
+]

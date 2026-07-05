@@ -1,0 +1,13 @@
+from solution import transpose  # trustgate: ignore TG-D01
+
+
+def test_basic():
+    assert transpose([[1, 2, 3], [4, 5, 6]]) == [[1, 4], [2, 5], [3, 6]]
+
+
+def test_single():
+    assert transpose([[1]]) == [[1]]
+
+
+def test_empty():
+    assert transpose([]) == []

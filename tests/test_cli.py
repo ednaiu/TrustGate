@@ -26,8 +26,8 @@ def test_clean_file_passes_with_missing_mutation_penalty(tmp_path):
     # static layer alone: clean code minus the "no mutation verdict" penalty
     code, rep = run(tmp_path, CLEAN)
     assert rep["score"] == 90
-    assert rep["verdict"] == "PASS"
-    assert code == 0
+    assert rep["verdict"] == "REVIEW"
+    assert code == 1
     assert rep["partial"] is True
 
 
@@ -101,7 +101,7 @@ def test_check_writes_html_report(tmp_path):
     f.write_text(CLEAN)
     html = tmp_path / "report.html"
     code = main(["check", str(f), "--no-sandbox", "--html", str(html)])
-    assert code == 0
+    assert code == 1
     assert "TrustGate" in html.read_text()
 
 
@@ -109,7 +109,7 @@ def test_scan_project_from_cli(tmp_path, capsys):
     (tmp_path / "bad.py").write_text("import requsets\n")
     out = tmp_path / "scan.json"
     code = main(["scan", str(tmp_path), "--json", str(out)])
-    assert code == 1
+    assert code == 2  # a typo import is critical, one critical blocks
     assert "TrustGate scan" in capsys.readouterr().out
     rep = json.loads(out.read_text())
     assert rep["summary"]["files_scanned"] == 1
@@ -122,7 +122,7 @@ def test_scan_cli_writes_github_annotations(tmp_path):
 
     code = main(["scan", str(tmp_path), "--github-annotations", str(annotations)])
 
-    assert code == 1
+    assert code == 2  # a typo import is critical, one critical blocks
     data = json.loads(annotations.read_text())
     assert data[0]["path"] == "bad.py"
 
@@ -149,7 +149,7 @@ def test_dashboard_cli(tmp_path, capsys):
     db = tmp_path / "history.sqlite"
     html = tmp_path / "dashboard.html"
 
-    assert main(["scan", str(tmp_path), "--save-history", str(db)]) == 0
+    assert main(["scan", str(tmp_path), "--save-history", str(db)]) == 1
     assert main(["dashboard", "--db", str(db), "--html", str(html)]) == 0
     assert "TrustGate dashboard written" in capsys.readouterr().out
     assert "История проверок" in html.read_text()

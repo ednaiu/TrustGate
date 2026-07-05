@@ -61,6 +61,58 @@ def baseline_flags(path: Path) -> bool:
     return False
 
 
+def mutation_corpus_metrics(clean_dir: Path) -> dict:
+    from trustgate import mutation, sandbox
+
+    if not sandbox.available() or not sandbox.ensure_image():
+        return {"available": False, "reason": "docker_unavailable"}
+
+    clean_samples = sorted(clean_dir.glob("*.py"))
+    if not clean_samples:
+        return {"available": True, "samples": 0, "reason": "empty_clean_corpus"}
+
+    overall = {
+        "available": True,
+        "samples": 0,
+        "mutants_total": 0,
+        "mutants_killed": 0,
+        "mutation_score": 0.0,
+        "coverage_by_type": {},
+    }
+    type_stats = {}
+
+    def merge_type_stats(dest: dict, src: dict) -> None:
+        for kind, item in src.items():
+            slot = dest.setdefault(kind, {"sites": 0, "generated": 0, "killed": 0})
+            slot["sites"] += int(item.get("sites", 0))
+            slot["generated"] += int(item.get("generated", 0))
+            slot["killed"] += int(item.get("killed", 0))
+
+    for path in clean_samples:
+        sample = path.read_text(encoding="utf-8")
+        try:
+            _, task = path.stem.split("__", 1)
+        except ValueError:
+            continue
+        tests_path = HERE / "tasks" / task / "reference_tests.py"
+        if not tests_path.is_file():
+            continue
+        result = mutation.evaluate(sample, tests_path.read_text(encoding="utf-8"), sandbox.run_tests)
+        overall["samples"] += 1
+        overall["mutants_total"] += result["mutants_total"]
+        overall["mutants_killed"] += result["mutants_killed"]
+        merge_type_stats(type_stats, result.get("coverage_by_type", {}))
+
+    overall["mutation_score"] = (
+        overall["mutants_killed"] / overall["mutants_total"] if overall["mutants_total"] else 0.0
+    )
+    for kind, item in type_stats.items():
+        item["coverage"] = round(item["generated"] / item["sites"], 4) if item["sites"] else 0.0
+        item["kill_rate"] = round(item["killed"] / item["generated"], 4) if item["generated"] else 0.0
+    overall["coverage_by_type"] = type_stats
+    return overall
+
+
 def measure():
     samples = []
     for path in sorted((HERE / "labeled" / "clean").glob("*.py")):
@@ -97,6 +149,7 @@ def measure():
         "defective": sum(1 for _, d in samples if d),
         "trustgate": metrics(trustgate_flags, by_path=False),
         "baseline_flake8_bandit": metrics(baseline_flags, by_path=True),
+        "mutation": mutation_corpus_metrics(HERE / "labeled" / "clean"),
     }
     out = RESULTS / "metrics.json"
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")

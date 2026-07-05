@@ -12,6 +12,7 @@ TG-D02 = 25
 TG-D03 = 30
 TG-D04 = 25
 TG-D12 = 20
+TG-D13 = 25
 
 [dynamic]
 first_fail = 20

@@ -1,5 +1,25 @@
 # История Изменений
 
+## 1.4.0 - 2026-07-05
+
+- Детерминированный TG-D01: снапшот top-15000 PyPI в репозитории, first-party
+  модули сканируемого проекта, локальное окружение - только по явному
+  `--trust-local-env`. Typosquat-эвристика ограничена именами от 5 символов.
+- Новые детекторы: TG-D13 (hallucinated keyword arguments, сверка с
+  `inspect.signature` для whitelisted stdlib) и TG-D14 (placeholder-значения
+  в строковых литералах). Version-guarded код исключен из D02/D13.
+- Внешний бенчмарк выполнен: корпус 245 samples (SecurityEval/Copilot,
+  LLM-решения с разметкой reference-тестами, инъекции дефектов, clean OSS),
+  сравнение с ruff/flake8/bandit/semgrep, per-slice recall, ablation,
+  FP-анализ. Результаты в `experiment/benchmark-result.json` и
+  `docs/benchmark.md`.
+- Калибровка порогов вердикта на корпусе: `BLOCK_ON_CRITICAL_COUNT` 3 -> 1
+  (precision 1.0, FPR 0 на clean-группе); методика в
+  `docs/scoring_rationale.md`, расчет в `experiment/calibrate.py`.
+- Отчеты разбивают findings на `llm_specific` / `general_quality`.
+- Baseline-инструменты в бенчмарке запускаются один раз на директорию
+  корпуса; зафиксированы версии инструментов.
+
 ## 1.3.0 - 2026-07-04
 
 - Добавлен project-level mutation testing: `trustgate scan . --project-mutation`.

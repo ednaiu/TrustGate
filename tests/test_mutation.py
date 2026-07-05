@@ -36,6 +36,11 @@ def test_compare_mutation_changes_operator():
     assert any("a <= b" in src for _, src in mutants)
 
 
+def test_binop_mutation_changes_operator():
+    mutants = generate("def f(a, b):\n    return a + b\n")
+    assert any("a - b" in src or "a / b" in src for _, src in mutants)
+
+
 def test_killed_mutant_detection():
     from trustgate.mutation import evaluate
 
@@ -46,3 +51,5 @@ def test_killed_mutant_detection():
     result = evaluate(SRC, "def test(): pass", fake_runner)
     assert result["mutation_score"] == 1.0
     assert result["mutants_killed"] == result["mutants_total"]
+    assert "coverage_by_type" in result
+    assert "compare" in result["coverage_by_type"]

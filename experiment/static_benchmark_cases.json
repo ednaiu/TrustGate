@@ -1,72 +1,84 @@
 [
-  {
-    "id": "clean_two_sum",
-    "label": "clean",
-    "code": "def two_sum(nums, target):\n    seen = {}\n    for i, x in enumerate(nums):\n        if target - x in seen:\n            return seen[target - x], i\n        seen[x] = i\n    return None\n"
-  },
-  {
-    "id": "hallucinated_import",
-    "label": "defective",
-    "expected": "TG-D01",
-    "code": "import requsets\n\ndef fetch(url):\n    return requsets.get(url)\n"
-  },
-  {
-    "id": "dangerous_eval",
-    "label": "defective",
-    "expected": "TG-D03",
-    "code": "def parse(raw):\n    return eval(raw)\n"
-  },
-  {
-    "id": "sql_fstring",
-    "label": "defective",
-    "expected": "TG-D04",
-    "code": "def load(cur, user_id):\n    return cur.execute(f'SELECT * FROM users WHERE id={user_id}')\n"
-  },
-  {
-    "id": "shell_true_dynamic",
-    "label": "defective",
-    "expected": "TG-D05",
-    "code": "import subprocess\n\ndef run(cmd):\n    return subprocess.run(cmd, shell=True)\n"
-  },
-  {
-    "id": "verify_false",
-    "label": "defective",
-    "expected": "TG-D06",
-    "code": "import requests\n\ndef get(url):\n    return requests.get(url, verify=False)\n"
-  },
-  {
-    "id": "weak_secret_hash",
-    "label": "defective",
-    "expected": "TG-D07",
-    "code": "import hashlib\n\ndef store(pw):\n    password_hash = hashlib.md5(pw.encode()).hexdigest()\n    return password_hash\n"
-  },
-  {
-    "id": "swallowed_exception",
-    "label": "defective",
-    "expected": "TG-D08",
-    "code": "def save(fn):\n    try:\n        fn()\n    except Exception:\n        pass\n"
-  },
-  {
-    "id": "left_stub",
-    "label": "defective",
-    "expected": "TG-D09",
-    "code": "def solve(data):\n    pass\n"
-  },
-  {
-    "id": "dead_branch",
-    "label": "defective",
-    "expected": "TG-D10",
-    "code": "def f():\n    if False:\n        return 1\n    return 2\n"
-  },
-  {
-    "id": "tautological_assert",
-    "label": "defective",
-    "expected": "TG-D11",
-    "code": "def test_value(x):\n    assert x == x\n"
-  },
-  {
-    "id": "clean_parameters",
-    "label": "clean",
-    "code": "def load(cur, user_id):\n    return cur.execute('SELECT * FROM users WHERE id=?', (user_id,))\n"
-  }
+ {
+  "id": "clean_two_sum",
+  "label": "clean",
+  "code": "def two_sum(nums, target):\n    seen = {}\n    for i, x in enumerate(nums):\n        if target - x in seen:\n            return seen[target - x], i\n        seen[x] = i\n    return None\n"
+ },
+ {
+  "id": "hallucinated_import",
+  "label": "defective",
+  "expected": "TG-D01",
+  "code": "import requsets\n\ndef fetch(url):\n    return requsets.get(url)\n"
+ },
+ {
+  "id": "dangerous_eval",
+  "label": "defective",
+  "expected": "TG-D03",
+  "code": "def parse(raw):\n    return eval(raw)\n"
+ },
+ {
+  "id": "sql_fstring",
+  "label": "defective",
+  "expected": "TG-D04",
+  "code": "def load(cur, user_id):\n    return cur.execute(f'SELECT * FROM users WHERE id={user_id}')\n"
+ },
+ {
+  "id": "shell_true_dynamic",
+  "label": "defective",
+  "expected": "TG-D05",
+  "code": "import subprocess\n\ndef run(cmd):\n    return subprocess.run(cmd, shell=True)\n"
+ },
+ {
+  "id": "verify_false",
+  "label": "defective",
+  "expected": "TG-D06",
+  "code": "import requests\n\ndef get(url):\n    return requests.get(url, verify=False)\n"
+ },
+ {
+  "id": "weak_secret_hash",
+  "label": "defective",
+  "expected": "TG-D07",
+  "code": "import hashlib\n\ndef store(pw):\n    password_hash = hashlib.md5(pw.encode()).hexdigest()\n    return password_hash\n"
+ },
+ {
+  "id": "swallowed_exception",
+  "label": "defective",
+  "expected": "TG-D08",
+  "code": "def save(fn):\n    try:\n        fn()\n    except Exception:\n        pass\n"
+ },
+ {
+  "id": "left_stub",
+  "label": "defective",
+  "expected": "TG-D09",
+  "code": "def solve(data):\n    pass\n"
+ },
+ {
+  "id": "dead_branch",
+  "label": "defective",
+  "expected": "TG-D10",
+  "code": "def f():\n    if False:\n        return 1\n    return 2\n"
+ },
+ {
+  "id": "tautological_assert",
+  "label": "defective",
+  "expected": "TG-D11",
+  "code": "def test_value(x):\n    assert x == x\n"
+ },
+ {
+  "id": "clean_parameters",
+  "label": "clean",
+  "code": "def load(cur, user_id):\n    return cur.execute('SELECT * FROM users WHERE id=?', (user_id,))\n"
+ },
+ {
+  "id": "hallucinated_kwarg",
+  "label": "defective",
+  "expected": "TG-D13",
+  "code": "import shutil\n\ndef backup(src, dst):\n    return shutil.copy(src, dst, overwrite=True)\n"
+ },
+ {
+  "id": "placeholder_api_key",
+  "label": "defective",
+  "expected": "TG-D14",
+  "code": "import os\n\nAPI_KEY = \"YOUR_API_KEY_HERE\"\n\ndef auth_header():\n    return {\"Authorization\": f\"Bearer {API_KEY}\"}\n"
+ }
 ]

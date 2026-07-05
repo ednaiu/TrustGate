@@ -13,6 +13,7 @@ def analyze_source(
     no_sandbox: bool = False,
     no_mutation: bool = False,
     warn=None,
+    ctx: detectors.ScanContext | None = None,
 ) -> dict:
     """Run TrustGate layers and return a report dict.
 
@@ -25,7 +26,7 @@ def analyze_source(
 
     timing = {}
     t0 = time.monotonic()
-    findings = detectors.run_static(source)
+    findings = detectors.run_static(source, ctx=ctx)
     timing["static"] = int((time.monotonic() - t0) * 1000)
 
     use_sandbox = not no_sandbox
@@ -67,5 +68,5 @@ def analyze_source(
         dynamic = {"ran": False, "reason": "no_tests" if tests is None else "disabled"}
 
     partial = no_sandbox or no_mutation or not use_sandbox
-    raw, score, verdict = scoring.aggregate(findings, dynamic, mut, cfg)
+    raw, score, verdict = scoring.aggregate(findings, dynamic, mut, cfg, partial=partial)
     return report.build(target, raw, score, verdict, partial, findings, dynamic, mut, timing)

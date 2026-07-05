@@ -2,8 +2,12 @@
 from .config import Config
 from .findings import Finding
 
-CRITICAL_DETECTORS = {"TG-D01", "TG-D02", "TG-D03", "TG-D04"}
-BLOCK_ON_CRITICAL_COUNT = 3
+CRITICAL_DETECTORS = {"TG-D01", "TG-D02", "TG-D03", "TG-D04", "TG-D13"}
+# Calibrated on the external corpus (experiment/calibrate.py, corpus v1,
+# 245 samples): a single critical finding blocks with precision 1.0 and
+# FPR 0.0 on the clean group; the old value 3 never fired at all (the median
+# defective file carries exactly one critical). See docs/scoring_rationale.md.
+BLOCK_ON_CRITICAL_COUNT = 1
 
 
 def static_penalty(findings: list[Finding], cfg: Config) -> int:
@@ -50,7 +54,7 @@ def mutation_penalty(mutation: dict | None, cfg: Config) -> int:
     return 0
 
 
-def aggregate(findings, dynamic, mutation, cfg: Config):
+def aggregate(findings, dynamic, mutation, cfg: Config, partial: bool = False):
     raw = 100 - static_penalty(findings, cfg) \
               - dynamic_penalty(dynamic, cfg) \
               - mutation_penalty(mutation, cfg)
@@ -62,5 +66,7 @@ def aggregate(findings, dynamic, mutation, cfg: Config):
     elif score >= cfg.thresholds["pass"]:
         verdict = "PASS"
     else:
+        verdict = "REVIEW"
+    if partial and verdict == "PASS":
         verdict = "REVIEW"
     return raw, score, verdict

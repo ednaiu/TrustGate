@@ -6,9 +6,17 @@ import ast
 import io
 import re
 import tokenize
+from dataclasses import dataclass
 
 from .findings import Finding
 from .known_packages import closest_popular, is_known
+
+
+@dataclass(frozen=True)
+class ScanContext:
+    """Extra knowledge for detectors that need more than the source itself."""
+    known_modules: frozenset[str] = frozenset()  # first-party modules of the scanned repo
+    trust_local_env: bool = False  # opt-in: accept packages installed locally
 
 # stdlib modules we dare to import ourselves to verify attribute access (TG-D02)
 ATTR_CHECK_MODULES = {
@@ -56,7 +64,7 @@ def _ignored_detectors(source):
     return ignores
 
 
-def check_imports(tree, source):  # TG-D01
+def check_imports(tree, source, ctx):  # TG-D01
     out = []
     for node in ast.walk(tree):
         modules = []
@@ -65,7 +73,8 @@ def check_imports(tree, source):  # TG-D01
         elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             modules = [(node.module, node.lineno)]
         for mod, line in modules:
-            if is_known(mod):
+            if is_known(mod, extra_known=ctx.known_modules,
+                        trust_local_env=ctx.trust_local_env):
                 continue
             similar = closest_popular(mod)
             if similar:
@@ -79,9 +88,25 @@ def check_imports(tree, source):  # TG-D01
     return out
 
 
-def check_attributes(tree, source):  # TG-D02
+def _version_guarded_lines(tree):
+    """Lines inside `if sys.version_info...` / `hexversion` blocks.
+
+    Code there intentionally differs per interpreter, so validating it against
+    the interpreter running TrustGate (TG-D02/TG-D13) would be a coin flip.
+    """
+    lines = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            test_src = ast.dump(node.test)
+            if "version_info" in test_src or "hexversion" in test_src:
+                lines.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+    return lines
+
+
+def check_attributes(tree, source, ctx):  # TG-D02
     import importlib
 
+    guarded = _version_guarded_lines(tree)
     out = []
     aliases = {}
     for node in ast.walk(tree):
@@ -125,13 +150,13 @@ def check_attributes(tree, source):  # TG-D02
     seen = set()
     unique = []
     for f in out:  # ast.walk visits nested Attribute nodes repeatedly
-        if (f.line, f.message) not in seen:
+        if f.line not in guarded and (f.line, f.message) not in seen:
             seen.add((f.line, f.message))
             unique.append(f)
     return unique
 
 
-def check_dangerous_exec(tree, source):  # TG-D03
+def check_dangerous_exec(tree, source, ctx):  # TG-D03
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -164,7 +189,7 @@ def _has_dynamic_string(node):
     return False
 
 
-def check_sql_injection(tree, source):  # TG-D04
+def check_sql_injection(tree, source, ctx):  # TG-D04
     out = []
     for node in ast.walk(tree):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
@@ -175,7 +200,7 @@ def check_sql_injection(tree, source):  # TG-D04
     return out
 
 
-def check_shell_true(tree, source):  # TG-D05
+def check_shell_true(tree, source, ctx):  # TG-D05
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -189,7 +214,7 @@ def check_shell_true(tree, source):  # TG-D05
     return out
 
 
-def check_tls_verify(tree, source):  # TG-D06
+def check_tls_verify(tree, source, ctx):  # TG-D06
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -209,7 +234,7 @@ def _contains_weak_hash(node):
     return None
 
 
-def check_weak_hash(tree, source):  # TG-D07
+def check_weak_hash(tree, source, ctx):  # TG-D07
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
@@ -223,7 +248,7 @@ def check_weak_hash(tree, source):  # TG-D07
     return out
 
 
-def check_broad_except(tree, source):  # TG-D08
+def check_broad_except(tree, source, ctx):  # TG-D08
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.ExceptHandler):
@@ -253,7 +278,7 @@ def _is_abstract(func):
     return False
 
 
-def check_stubs(tree, source):  # TG-D09
+def check_stubs(tree, source, ctx):  # TG-D09
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or _is_abstract(node):
@@ -285,7 +310,7 @@ def check_stubs(tree, source):  # TG-D09
     return out
 
 
-def check_dead_code(tree, source):  # TG-D10
+def check_dead_code(tree, source, ctx):  # TG-D10
     out = []
     for node in ast.walk(tree):
         for field in ("body", "orelse", "finalbody"):
@@ -308,7 +333,130 @@ def check_dead_code(tree, source):  # TG-D10
     return out
 
 
-def check_tautological_asserts(tree, source):  # TG-D11
+def _import_bindings(tree):
+    """Names bound by imports: alias -> module, plus from-imports -> (module, attr)."""
+    aliases = {}
+    from_imports = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.asname:
+                    aliases[a.asname] = a.name
+                else:
+                    top = a.name.split(".")[0]
+                    aliases[top] = top
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 \
+                and node.module in ATTR_CHECK_MODULES:
+            for a in node.names:
+                if a.name != "*":
+                    from_imports[a.asname or a.name] = (node.module, a.name)
+    return aliases, from_imports
+
+
+def _resolve_stdlib_callable(node, aliases, from_imports):
+    """Return the actual stdlib object a call targets, or None."""
+    import importlib
+
+    if isinstance(node.func, ast.Name):
+        binding = from_imports.get(node.func.id)
+        if binding is None:
+            return None
+        mod = importlib.import_module(binding[0])
+        return getattr(mod, binding[1], None)
+    if not isinstance(node.func, ast.Attribute):
+        return None
+    dotted = _dotted_name(node.func)
+    if not dotted:
+        return None
+    parts = dotted.split(".")
+    real_root = aliases.get(parts[0])
+    if real_root is None:
+        return None
+    full = [real_root] + parts[1:]
+    for cut in range(len(full) - 1, 0, -1):
+        prefix = ".".join(full[:cut])
+        if prefix in ATTR_CHECK_MODULES:
+            obj = importlib.import_module(prefix)
+            for attr in full[cut:]:
+                obj = getattr(obj, attr, None)
+                if obj is None:
+                    return None  # TG-D02's job, not ours
+            return obj
+    return None
+
+
+def check_kwargs(tree, source, ctx):  # TG-D13
+    """Keyword arguments that the called stdlib function does not accept.
+
+    A classic LLM hallucination: the function exists, the kwarg does not
+    (e.g. shutil.copy(src, dst, overwrite=True)). Only whitelisted stdlib
+    modules are checked, so the verdict stays deterministic.
+    """
+    import inspect
+
+    out = []
+    guarded = _version_guarded_lines(tree)
+    aliases, from_imports = _import_bindings(tree)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.keywords \
+                or node.lineno in guarded:
+            continue
+        func = _resolve_stdlib_callable(node, aliases, from_imports)
+        if func is None or not callable(func):
+            continue
+        try:
+            params = inspect.signature(func).parameters
+        except (ValueError, TypeError):
+            continue  # C function without introspectable signature
+        if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+            continue
+        valid = {
+            name for name, p in params.items()
+            if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                          inspect.Parameter.KEYWORD_ONLY)
+        }
+        for kw in node.keywords:
+            if kw.arg is not None and kw.arg not in valid:
+                name = getattr(func, "__qualname__", getattr(func, "__name__", "?"))
+                out.append(Finding(
+                    "TG-D13", "critical", node.lineno,
+                    f"'{name}()' has no keyword argument '{kw.arg}'"))
+    return out
+
+
+PLACEHOLDER_RES = (
+    re.compile(r"your[-_ ]?(api[-_ ]?key|token|secret|password|username|email|domain)",
+               re.IGNORECASE),
+    re.compile(r"<\s*your\b[^>]*>", re.IGNORECASE),
+    re.compile(r"\bYOUR_[A-Z][A-Z0-9_]+\b"),
+    re.compile(r"\bchange[-_ ]?me\b", re.IGNORECASE),
+    re.compile(r"\binsert[-_ ](your|api|key|token)\b", re.IGNORECASE),
+)
+
+
+def check_placeholders(tree, source, ctx):  # TG-D14
+    """Template placeholder values left in string literals (fake keys, tokens).
+
+    LLMs routinely ship them instead of wiring real configuration; merged
+    as-is they become runtime failures or fake credentials.
+    """
+    out = []
+    seen = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            continue
+        for pattern in PLACEHOLDER_RES:
+            match = pattern.search(node.value)
+            if match and (node.lineno, match.group(0)) not in seen:
+                seen.add((node.lineno, match.group(0)))
+                out.append(Finding(
+                    "TG-D14", "major", node.lineno,
+                    f"placeholder value '{match.group(0)}' left in code"))
+                break
+    return out
+
+
+def check_tautological_asserts(tree, source, ctx):  # TG-D11
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assert):
@@ -335,19 +483,41 @@ DETECTORS = [
     check_stubs,
     check_dead_code,
     check_tautological_asserts,
+    check_kwargs,
+    check_placeholders,
 ]
 
+# TG-D12 (dependency manifests) lives in scan.py: it needs manifest files,
+# not a Python AST. Together: 13 static detectors + 1 manifest detector.
+DETECTOR_CODES = (
+    "TG-D01", "TG-D02", "TG-D03", "TG-D04", "TG-D05",
+    "TG-D06", "TG-D07", "TG-D08", "TG-D09", "TG-D10", "TG-D11",
+    "TG-D13", "TG-D14",
+)
 
-def run_static(source: str) -> list[Finding]:
+# Detectors targeting the defect profile characteristic of generated code
+# (hallucinated names, stubs, placeholders) vs. general code-quality rules.
+LLM_SPECIFIC_DETECTORS = frozenset(
+    {"TG-D01", "TG-D02", "TG-D09", "TG-D12", "TG-D13", "TG-D14"})
+
+
+def run_static(
+    source: str,
+    disabled_detectors: set[str] | None = None,
+    ctx: ScanContext | None = None,
+) -> list[Finding]:
     tree = ast.parse(source)
+    ctx = ctx or ScanContext()
+    disabled = set(disabled_detectors or ())
     ignored = _ignored_detectors(source)
     findings = []
     for det in DETECTORS:
-        findings.extend(det(tree, source))
+        findings.extend(det(tree, source, ctx))
     findings = [
         f for f in findings
         if "*" not in ignored.get(f.line, set())
         and f.detector not in ignored.get(f.line, set())
+        and f.detector not in disabled
     ]
     findings.sort(key=lambda f: (f.line, f.detector))
     return findings

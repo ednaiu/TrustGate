@@ -59,26 +59,37 @@ def _docker_cmd(name: str, workdir: str, inner: list[str]) -> list[str]:
     ]
 
 
-def run_tests(code: str, tests: str) -> dict:
-    """Returns the 'dynamic' layer dict for the report."""
+def run_command(workdir: str | Path, command: str, timeout: int = WALL_TIME) -> dict:
+    """Run a trusted shell command inside the TrustGate Docker image."""
     name = f"trustgate-{uuid.uuid4().hex[:12]}"
-    with tempfile.TemporaryDirectory() as tmp:
-        Path(tmp, "solution.py").write_text(code, encoding="utf-8")
-        Path(tmp, "test_solution.py").write_text(tests, encoding="utf-8")
-        cmd = _docker_cmd(name, tmp,
-                          ["python", "-m", "pytest", "test_solution.py", "-q", "--tb=no"])
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=WALL_TIME + 15)
-        except subprocess.TimeoutExpired:
-            # the client gave up but the container is still spinning
-            subprocess.run(["docker", "kill", name], capture_output=True)
-            return {"ran": True, "tests_total": 0, "tests_failed": 0, "timeout": True}
-
-    if proc.returncode not in PYTEST_OK:
-        return {"ran": True, "tests_total": 0, "tests_failed": 0,
-                "timeout": False, "build_error": True}
+    cmd = _docker_cmd(name, str(workdir), ["sh", "-lc", command])
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 15)
+    except subprocess.TimeoutExpired:
+        subprocess.run(["docker", "kill", name], capture_output=True)
+        return {
+            "ran": True,
+            "kind": "project",
+            "command": command,
+            "tests_total": 0,
+            "tests_failed": 0,
+            "timeout": True,
+        }
 
     out = proc.stdout + proc.stderr
+    if proc.returncode not in PYTEST_OK:
+        return {
+            "ran": True,
+            "kind": "project",
+            "command": command,
+            "tests_total": 0,
+            "tests_failed": 0,
+            "timeout": False,
+            "build_error": True,
+            "returncode": proc.returncode,
+            "output_tail": out[-4000:],
+        }
+
     failed = passed = 0
     m = re.search(r"(\d+) failed", out)
     if m:
@@ -86,5 +97,28 @@ def run_tests(code: str, tests: str) -> dict:
     m = re.search(r"(\d+) passed", out)
     if m:
         passed = int(m.group(1))
-    return {"ran": True, "tests_total": failed + passed,
-            "tests_failed": failed, "timeout": False}
+    return {
+        "ran": True,
+        "kind": "project",
+        "command": command,
+        "tests_total": failed + passed,
+        "tests_failed": failed,
+        "timeout": False,
+        "returncode": proc.returncode,
+        "output_tail": out[-4000:],
+    }
+
+
+def run_tests(code: str, tests: str) -> dict:
+    """Returns the 'dynamic' layer dict for the report."""
+    with tempfile.TemporaryDirectory() as tmp:
+        Path(tmp, "solution.py").write_text(code, encoding="utf-8")
+        Path(tmp, "test_solution.py").write_text(tests, encoding="utf-8")
+        result = run_command(tmp, "python -m pytest test_solution.py -q --tb=no")
+
+    out = {"ran": True, "tests_total": result.get("tests_total", 0),
+           "tests_failed": result.get("tests_failed", 0),
+           "timeout": result.get("timeout", False)}
+    if result.get("build_error"):
+        out["build_error"] = True
+    return out

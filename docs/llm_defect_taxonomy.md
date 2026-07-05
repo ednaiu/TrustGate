@@ -17,6 +17,8 @@ TrustGate не заменяет линтеры. Он закрывает проф
 | TG-D10 | dead code | признак механически собранного или невычитанного кода |
 | TG-D11 | tautological assert | тест выглядит как тест, но ничего не доказывает |
 | TG-D12 | suspicious dependency | LLM может придумать пакет в `pyproject.toml` или `requirements.txt` |
+| TG-D13 | hallucinated keyword argument | функция существует, а kwarg - нет: классическая галлюцинация API |
+| TG-D14 | placeholder value | `"YOUR_API_KEY_HERE"` вместо реальной конфигурации доезжает до merge |
 
 ## Чего TrustGate Не Обещает
 

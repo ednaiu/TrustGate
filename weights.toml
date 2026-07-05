@@ -17,6 +17,8 @@ TG-D09 = 10   # stub instead of implementation
 TG-D10 = 5    # dead code
 TG-D11 = 12   # tautological assert
 TG-D12 = 15   # suspicious dependency manifest entry
+TG-D13 = 20   # hallucinated keyword argument
+TG-D14 = 10   # placeholder value left in code
 
 [thresholds]
 pass = 76     # score >= pass  -> PASS

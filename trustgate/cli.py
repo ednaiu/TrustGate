@@ -9,6 +9,7 @@ from . import policy
 from . import report
 from . import scan as project_scan
 from .config import Config
+from .detectors import ScanContext
 from .engine import analyze_source
 
 EXIT = {"PASS": 0, "REVIEW": 1, "BLOCK": 2}
@@ -61,6 +62,7 @@ def check(args) -> int:
         no_sandbox=args.no_sandbox,
         no_mutation=args.no_mutation,
         warn=lambda message: print(message, file=sys.stderr),
+        ctx=ScanContext(trust_local_env=args.trust_local_env),
     )
 
     if args.json:
@@ -109,6 +111,7 @@ def scan(args) -> int:
         project_mutation_limit=args.project_mutation_limit,
         policy_data=policy_data,
         warn=lambda message: print(message, file=sys.stderr),
+        trust_local_env=args.trust_local_env,
     )
 
     if args.json:
@@ -161,6 +164,9 @@ def main(argv=None) -> int:
     p_check.add_argument("--html", help="write a self-contained HTML report")
     p_check.add_argument("--no-sandbox", action="store_true")
     p_check.add_argument("--no-mutation", action="store_true")
+    p_check.add_argument("--trust-local-env", action="store_true",
+                         help="also accept packages installed in the local "
+                              "environment (verdict becomes machine-dependent)")
 
     p_report = sub.add_parser("report", help="render a saved JSON report")
     p_report.add_argument("report_file")
@@ -196,6 +202,9 @@ def main(argv=None) -> int:
     p_scan.add_argument("--sarif", help="write SARIF for GitHub code scanning")
     p_scan.add_argument("--github-annotations", help="write GitHub Checks annotations JSON")
     p_scan.add_argument("--save-history", help="append scan summary to a SQLite database")
+    p_scan.add_argument("--trust-local-env", action="store_true",
+                        help="also accept packages installed in the local "
+                             "environment (verdict becomes machine-dependent)")
 
     args = parser.parse_args(argv)
     try:

@@ -58,8 +58,28 @@ def inject_stub(source, rng):
     return source + "\n\ndef validate(data):\n    # TODO\n    pass\n", "TG-D09"
 
 
+def inject_hallucinated_kwarg(source, rng):
+    snippet = rng.choice([
+        "\n\ndef backup_file(src, dst):\n    import shutil\n"
+        "    return shutil.copy(src, dst, overwrite=True)\n",
+        "\n\ndef normalize_text(text):\n    import textwrap\n"
+        "    return textwrap.dedent(text, strip=True)\n",
+    ])
+    return source + snippet, "TG-D13"
+
+
+def inject_placeholder(source, rng):
+    fake = rng.choice([
+        '"YOUR_API_KEY_HERE"',  # trustgate: ignore TG-D14
+        '"your-secret-token"',  # trustgate: ignore TG-D14
+        '"<your password>"',  # trustgate: ignore TG-D14
+    ])
+    return source + f"\n\nAPI_KEY = {fake}\n", "TG-D14"
+
+
 INJECTIONS = [inject_hallucinated_import, inject_eval, inject_broad_except,
-              inject_off_by_one, inject_stub]
+              inject_off_by_one, inject_stub, inject_hallucinated_kwarg,
+              inject_placeholder]
 
 
 def main():

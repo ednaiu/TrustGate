@@ -16,8 +16,15 @@ def test_clean_code_full_pass():
     assert (raw, score, verdict) == (100, 100, "PASS")
 
 
-def test_three_criticals_always_block():
-    findings = make("TG-D01", "critical", 3)
+def test_partial_analysis_cannot_pass():
+    raw, score, verdict = aggregate([], {"ran": True, "tests_total": 5, "tests_failed": 0},
+                                    {"ran": False}, CFG, partial=True)
+    assert (raw, score, verdict) == (90, 90, "REVIEW")
+
+
+def test_single_critical_blocks():
+    # calibrated on corpus v1: one critical finding blocks with precision 1.0
+    findings = make("TG-D01", "critical", 1)
     _, score, verdict = aggregate(findings, None, {"ran": False}, CFG)
     assert verdict == "BLOCK"
 
@@ -76,7 +83,7 @@ def test_dynamic_fail_cap():
 
 
 def test_verdict_boundaries():
-    # PASS >= 76, REVIEW 40..75, BLOCK <= 39 (TZ NS-6)
+    # PASS >= 76, REVIEW 40..75, BLOCK <= 39; any critical -> BLOCK (corpus v1)
     clean_dynamic = {"ran": True, "tests_total": 1, "tests_failed": 0}
     clean_mutation = {"ran": True, "mutation_score": 1.0,
                       "mutants_total": 1, "mutants_killed": 1}
@@ -86,11 +93,9 @@ def test_verdict_boundaries():
         assert score == expected_score
         return verdict
 
-    # one TG-D04 (-20) -> 80
-    assert verdict_for(make("TG-D04", "critical"), 80) == "PASS"
-    # one TG-D01 (-25) -> exactly 75, the upper REVIEW boundary
-    assert verdict_for(make("TG-D01", "critical"), 75) == "REVIEW"
-    # 25+20+12+10 = 67 -> 33, only two criticals so the score rule decides
-    findings = (make("TG-D01", "critical") + make("TG-D04", "critical")
-                + make("TG-D06", "major") + make("TG-D05", "major"))
-    assert verdict_for(findings, 33) == "BLOCK"
+    # a critical finding blocks regardless of the remaining score
+    assert verdict_for(make("TG-D04", "critical"), 80) == "BLOCK"
+    assert verdict_for(make("TG-D01", "critical"), 75) == "BLOCK"
+    # majors alone follow the score rule: -12 -> 88 PASS, saturated majors -> REVIEW
+    assert verdict_for(make("TG-D06", "major"), 88) == "PASS"
+    assert verdict_for(make("TG-D06", "major", 4), 60) == "REVIEW"

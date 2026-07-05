@@ -26,8 +26,8 @@ jobs:
           project-tests: python -m pytest -q
           html: trustgate-report.html
           sarif: trustgate.sarif
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           sarif_file: trustgate.sarif
       - uses: actions/upload-artifact@v4

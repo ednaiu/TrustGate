@@ -2,17 +2,19 @@
 import ast
 import json
 import re
-import shlex
+import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
 from . import mutation
 from .config import Config
+from .detectors import ScanContext
 from .engine import analyze_source
 from .findings import Finding
 from .known_packages import closest_popular, is_known
-from . import report, scoring
+from . import report, sandbox, scoring
 
 try:
     import tomllib
@@ -35,6 +37,18 @@ SKIP_DIRS = {
 MANIFEST_NAMES = {"pyproject.toml"}
 REQUIREMENTS_RE = re.compile(r"(^|/)requirements[^/]*\.txt$")
 REQ_NAME_RE = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+
+
+def _copy_project_worktree(root: Path):
+    temp_root = tempfile.TemporaryDirectory()
+    worktree = Path(temp_root.name) / "project"
+    shutil.copytree(
+        root,
+        worktree,
+        ignore=shutil.ignore_patterns(*SKIP_DIRS),
+        dirs_exist_ok=True,
+    )
+    return temp_root, worktree
 
 
 def _git(root: Path, args: list[str]) -> subprocess.CompletedProcess:
@@ -68,7 +82,11 @@ def _changed_git_files(root: Path, base: str) -> list[Path]:
     proc = _git(root, ["ls-files", "--others", "--exclude-standard", "--", "*.py"])
     if proc.returncode == 0:
         changed.update(line for line in proc.stdout.splitlines() if line)
-    return [root / line for line in sorted(changed)]
+    return [
+        root / line for line in sorted(changed)
+        # untracked files may live in dirs the repo forgot to gitignore (.venv)
+        if not any(part in SKIP_DIRS for part in Path(line).parts)
+    ]
 
 
 def _walk_files(root: Path) -> list[Path]:
@@ -125,6 +143,23 @@ def discover_manifest_files(root: Path, changed: bool = False, base: str = "HEAD
         if path.name in MANIFEST_NAMES or REQUIREMENTS_RE.search(rel):
             out.append(path)
     return sorted(out)
+
+
+def first_party_modules(root: Path) -> frozenset[str]:
+    """Top-level import names defined by the scanned project itself.
+
+    Without this, absolute imports of the project's own packages would look
+    like unknown PyPI packages to TG-D01. Always computed over the full file
+    list (not just --changed files) so the context is stable.
+    """
+    names = set()
+    for path in discover_python_files(root, changed=False):
+        parts = path.relative_to(root).parts
+        if parts[0] == "src" and len(parts) > 1:  # src/ layout
+            parts = parts[1:]
+        top = parts[0]
+        names.add(top[:-3] if top.endswith(".py") else top)
+    return frozenset(names)
 
 
 def _read_utf8(path: Path) -> tuple[str | None, str | None]:
@@ -189,7 +224,13 @@ def _manifest_dependencies(path: Path, source: str) -> list[tuple[str, int]]:
     return deps
 
 
-def scan_manifests(root: Path, changed: bool, base: str, cfg: Config) -> tuple[list[dict], list[dict]]:
+def scan_manifests(
+    root: Path,
+    changed: bool,
+    base: str,
+    cfg: Config,
+    trust_local_env: bool = False,
+) -> tuple[list[dict], list[dict]]:
     findings = []
     errors = []
     for path in discover_manifest_files(root, changed=changed, base=base):
@@ -199,7 +240,7 @@ def scan_manifests(root: Path, changed: bool, base: str, cfg: Config) -> tuple[l
             errors.append({"file": str(rel), "line": 0, "message": error})
             continue
         for dep, line in _manifest_dependencies(path, source):
-            if is_known(dep):
+            if is_known(dep, trust_local_env=trust_local_env):
                 continue
             similar = closest_popular(dep)
             severity = "major" if similar else "minor"
@@ -217,51 +258,17 @@ def scan_manifests(root: Path, changed: bool, base: str, cfg: Config) -> tuple[l
 
 def run_project_tests(root: Path, command: str, timeout: int = 120) -> dict:
     started = time.monotonic()
+    temp_root, worktree = _copy_project_worktree(root)
     try:
-        proc = subprocess.run(
-            shlex.split(command),
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as exc:
-        return {
-            "ran": True,
-            "kind": "project",
-            "command": command,
-            "tests_total": 0,
-            "tests_failed": 0,
-            "timeout": True,
-            "duration_ms": int((time.monotonic() - started) * 1000),
-            "output_tail": (exc.stdout or "")[-4000:],
-        }
-    except OSError as exc:
-        return {
-            "ran": True,
-            "kind": "project",
-            "command": command,
-            "tests_total": 0,
-            "tests_failed": 0,
-            "timeout": False,
-            "build_error": True,
-            "duration_ms": int((time.monotonic() - started) * 1000),
-            "output_tail": str(exc),
-        }
-
-    failed = 0 if proc.returncode == 0 else 1
-    return {
-        "ran": True,
-        "kind": "project",
-        "command": command,
-        "tests_total": 1,
-        "tests_failed": failed,
-        "timeout": False,
-        "build_error": False,
-        "returncode": proc.returncode,
-        "duration_ms": int((time.monotonic() - started) * 1000),
-        "output_tail": (proc.stdout + proc.stderr)[-4000:],
-    }
+        if not sandbox.available():
+            return {"ran": False, "reason": "docker_unavailable"}
+        if not sandbox.ensure_image():
+            return {"ran": False, "reason": "runner_image_unavailable"}
+        result = sandbox.run_command(worktree, command, timeout=timeout)
+        result["duration_ms"] = int((time.monotonic() - started) * 1000)
+        return result
+    finally:
+        temp_root.cleanup()
 
 
 def _is_test_file(path: Path, root: Path) -> bool:
@@ -282,60 +289,76 @@ def run_project_mutation(
     if limit <= 0:
         return {"ran": False, "reason": "project_mutation_limit_is_zero"}
 
-    candidates = []
-    for path in files:
-        if _is_test_file(path, root):
-            continue
-        source, error = _read_utf8(path)
-        if error:
-            continue
-        try:
-            mutants = mutation.generate(source, seed=seed)
-        except SyntaxError:
-            continue
-        for desc, mutated_source in mutants:
-            candidates.append((path, source, desc, mutated_source))
+    temp_root, worktree = _copy_project_worktree(root)
+    try:
+        if not sandbox.available():
+            return {
+                "ran": False,
+                "reason": "docker_unavailable",
+            }
+        if not sandbox.ensure_image():
+            return {
+                "ran": False,
+                "reason": "runner_image_unavailable",
+            }
+        candidates = []
+        for path in worktree.rglob("*.py"):
+            if any(part in SKIP_DIRS for part in path.relative_to(worktree).parts):
+                continue
+            if _is_test_file(path, worktree):
+                continue
+            source, error = _read_utf8(path)
+            if error:
+                continue
+            try:
+                mutants = mutation.generate(source, seed=seed)
+            except SyntaxError:
+                continue
+            for desc, mutated_source in mutants:
+                candidates.append((path, source, desc, mutated_source))
+                if len(candidates) >= limit:
+                    break
             if len(candidates) >= limit:
                 break
-        if len(candidates) >= limit:
-            break
 
-    if not candidates:
+        if not candidates:
+            return {
+                "ran": True,
+                "kind": "project",
+                "command": command,
+                "mutants_total": 0,
+                "mutants_killed": 0,
+                "mutation_score": 1.0,
+                "survivors": [],
+            }
+
+        killed = 0
+        survivors = []
+        started = time.monotonic()
+        for path, original_source, desc, mutated_source in candidates:
+            rel = str(path.relative_to(worktree))
+            try:
+                path.write_text(mutated_source + "\n", encoding="utf-8")
+                result = sandbox.run_command(worktree, command, timeout=timeout)
+                if result.get("tests_failed", 0) > 0 or result.get("build_error") or result.get("timeout"):
+                    killed += 1
+                else:
+                    survivors.append({"file": rel, "mutation": desc})
+            finally:
+                path.write_text(original_source, encoding="utf-8")
+
         return {
             "ran": True,
             "kind": "project",
             "command": command,
-            "mutants_total": 0,
-            "mutants_killed": 0,
-            "mutation_score": 1.0,
-            "survivors": [],
+            "mutants_total": len(candidates),
+            "mutants_killed": killed,
+            "mutation_score": killed / len(candidates),
+            "survivors": survivors[:20],
+            "duration_ms": int((time.monotonic() - started) * 1000),
         }
-
-    killed = 0
-    survivors = []
-    started = time.monotonic()
-    for path, original_source, desc, mutated_source in candidates:
-        rel = str(path.relative_to(root))
-        try:
-            path.write_text(mutated_source + "\n", encoding="utf-8")
-            result = run_project_tests(root, command, timeout=timeout)
-            if result.get("tests_failed", 0) > 0 or result.get("build_error") or result.get("timeout"):
-                killed += 1
-            else:
-                survivors.append({"file": rel, "mutation": desc})
-        finally:
-            path.write_text(original_source, encoding="utf-8")
-
-    return {
-        "ran": True,
-        "kind": "project",
-        "command": command,
-        "mutants_total": len(candidates),
-        "mutants_killed": killed,
-        "mutation_score": killed / len(candidates),
-        "survivors": survivors[:20],
-        "duration_ms": int((time.monotonic() - started) * 1000),
-    }
+    finally:
+        temp_root.cleanup()
 
 
 def scan_project(
@@ -349,12 +372,17 @@ def scan_project(
     project_mutation_limit: int = 20,
     policy_data: dict | None = None,
     warn=None,
+    trust_local_env: bool = False,
 ) -> dict:
     cfg = cfg or Config()
     warn = warn or (lambda message: None)
     root = root.resolve()
     started = time.monotonic()
     files = discover_python_files(root, changed=changed, base=base)
+    ctx = ScanContext(
+        known_modules=first_party_modules(root),
+        trust_local_env=trust_local_env,
+    )
 
     file_reports = []
     syntax_errors = []
@@ -382,6 +410,7 @@ def scan_project(
             no_sandbox=True,
             no_mutation=True,
             warn=warn,
+            ctx=ctx,
         )
         for item in single["layers"]["static"]["findings"]:
             with_file = dict(item)
@@ -389,7 +418,8 @@ def scan_project(
             static_findings.append(with_file)
         file_reports.append(single)
 
-    manifest_findings, manifest_errors = scan_manifests(root, changed, base, cfg)
+    manifest_findings, manifest_errors = scan_manifests(
+        root, changed, base, cfg, trust_local_env=trust_local_env)
     static_findings.extend(manifest_findings)
     syntax_errors.extend(manifest_errors)
 
@@ -409,11 +439,13 @@ def scan_project(
     )
 
     finding_objects = [_finding_from_dict(item) for item in static_findings]
+    partial = not (dynamic.get("ran") and mutation_result.get("ran"))
     raw, score, verdict = scoring.aggregate(
         finding_objects,
         dynamic,
         mutation_result,
         cfg,
+        partial=partial,
     )
     if syntax_errors:
         raw = min(raw, 0)
@@ -428,7 +460,8 @@ def scan_project(
         "score": score,
         "raw_score": raw,
         "verdict": verdict,
-        "partial": not (dynamic.get("ran") and mutation_result.get("ran")),
+        "partial": partial,
+        "finding_groups": report.finding_groups(static_findings),
         "summary": {
             "files_scanned": len(files),
             "files_analyzed": len(file_reports),

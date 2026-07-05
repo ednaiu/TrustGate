@@ -21,7 +21,11 @@ TrustGate анализирует код, который может быть ош
 
 ## Текущие Контроли
 
-- Static layer только парсит AST и не импортирует код.
+- Static layer только парсит AST и не импортирует проверяемый код; для
+  TG-D02/TG-D13 импортируются исключительно stdlib-модули из фиксированного
+  белого списка (`ATTR_CHECK_MODULES`).
+- Вердикт TG-D01/TG-D12 детерминирован: снапшот PyPI в репозитории, локальное
+  окружение учитывается только по явному `--trust-local-env`.
 - Project scan проверяет `pyproject.toml` и `requirements*.txt`.
 - Single-file dynamic layer запускается в Docker без сети.
 - Docker runner использует CPU/RAM/PID limits.
@@ -34,14 +38,11 @@ TrustGate анализирует код, который может быть ош
 ## Ограничения
 
 - Docker isolation зависит от host Docker daemon.
-- Project test command выполняется в контексте caller CI/workstation.
-- Project-level mutation testing пока не реализован.
+- Project test command задается владельцем CI и выполняется в Docker sandbox
+  над временной копией репозитория.
 - Seccomp profile и rootless Docker остаются roadmap.
 
 ## Roadmap Hardening
 
 - rootless Docker;
-- custom seccomp profile;
-- project-level sandbox in temporary copy;
-- GitHub Checks annotations поверх SARIF;
-- project-level mutation testing.
+- custom seccomp profile.
