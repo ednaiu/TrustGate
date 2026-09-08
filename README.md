@@ -1,71 +1,71 @@
 # TrustGate
 
-Автор: Eva Iusupova ([github.com/iusupovaeva-debug](https://github.com/iusupovaeva-debug))
+Author: Edna Iusupova ([github.com/ednaiu](https://github.com/ednaiu))
 
-TrustGate - это quality-gate для Python-кода с фокусом на дефект-профиль
-генеративного кода: hallucinated imports и API, несуществующие kwargs,
-заглушки, placeholder-значения, опасные quick fixes. Он проверяет отдельный
-файл, весь репозиторий или измененные файлы в git и отвечает на практический
-вопрос: **можно ли мержить этот патч?**
+TrustGate is a quality gate for Python code focused on the defect profile of
+generated code: hallucinated imports and APIs, non-existent kwargs, stubs,
+placeholder values, dangerous quick fixes. It checks a single file, a whole
+repository, or only the files changed in git, and answers one practical
+question: **can this patch be merged?**
 
 ```bash
 trustgate scan . --project-tests "python -m pytest -q" --project-mutation --sarif trustgate.sarif
 ```
 
-Результат - объяснимый `Trust Score` от 0 до 100 и вердикт:
+The result is an explainable `Trust Score` from 0 to 100 and a verdict:
 
-- `PASS` - можно принимать;
-- `REVIEW` - нужен ручной review;
-- `BLOCK` - высокий риск, CI должен упасть.
+- `PASS` - safe to accept;
+- `REVIEW` - needs manual review;
+- `BLOCK` - high risk, CI should fail.
 
-## Зачем
+## Why
 
-LLM-ассистенты часто пишут код с особым профилем дефектов: выдуманные импорты,
-несуществующие API и keyword-аргументы, placeholder-значения вместо
-конфигурации, заглушки вместо решения и зависимости, которые выглядят
-правдоподобно, но не существуют.
+LLM assistants often write code with a distinctive defect profile: invented
+imports, non-existent APIs and keyword arguments, placeholder values instead of
+configuration, stubs instead of a solution, and dependencies that look
+plausible but do not exist.
 
-Это утверждение в проекте измерено, а не задекларировано. На корпусе из 245
-samples (реальный код Copilot из SecurityEval, LLM-решения, размеченные
-reference-тестами, clean OSS-файлы - см. `docs/benchmark.md`):
+In this project that claim is measured, not declared. On a corpus of 245
+samples (real Copilot code from SecurityEval, LLM solutions labeled by
+reference tests, clean OSS files - see `docs/benchmark.md`):
 
-| инструмент | precision | recall | F1 | FPR на clean | recall на профиле генеративного кода |
-|------------|-----------|--------|-----|--------------|--------------------------------------|
+| tool | precision | recall | F1 | FPR on clean | recall on the generated-code profile |
+|------|-----------|--------|-----|--------------|--------------------------------------|
 | **TrustGate (static)** | **1.000** | 0.357 | **0.526** | **0.0%** | **0.854** |
 | bandit | 0.962 | 0.298 | 0.455 | 2.7% | 0.341 |
 | semgrep | 1.000 | 0.263 | 0.417 | 0.0% | 0.171 |
 | ruff | 0.973 | 0.211 | 0.346 | 1.4% | 0.195 |
 | flake8 | 0.841 | 0.801 | 0.820 | 35.1% | 0.415 |
 
-TrustGate не заменяет bandit/semgrep (на классических CWE-уязвимостях они
-сильнее) - он закрывает их слепую зону: дефекты, характерные для
-сгенерированного кода, где его recall 85% против максимум 34% у baseline.
+TrustGate does not replace bandit/semgrep (they are stronger on classic CWE
+vulnerabilities) - it covers their blind spot: defects typical of generated
+code, where its recall is 85% against at most 34% for the baselines.
 
-## Слои Проверки
+## Analysis Layers
 
-| слой | что делает |
-|------|------------|
-| L1 static | 14 детекторов `TG-D01..TG-D11`, `TG-D13..TG-D15`: hallucinated imports/API/kwargs, `eval/exec/os.system/yaml.load`, SQL string building, `shell=True`, отключенная TLS-верификация, weak hashes/random/ECB, broad except, stubs, dead code, tautological asserts, placeholders, insecure defaults |
-| manifest scan | `TG-D12`: подозрительные зависимости в `pyproject.toml` и `requirements*.txt` |
-| L2 dynamic | запускает pytest в Docker sandbox для single-file flow |
-| L3 mutation | генерирует AST-мутанты и проверяет, убивают ли их тесты; работает и для single-file flow, и для repo-flow через `--project-mutation` |
-| repo scan | проверяет git/project files, dependency manifests, optional project tests, policy gates, SARIF/HTML/JSON/GitHub annotations |
+| layer | what it does |
+|-------|--------------|
+| L1 static | 14 detectors `TG-D01..TG-D11`, `TG-D13..TG-D15`: hallucinated imports/APIs/kwargs, `eval/exec/os.system/yaml.load`, SQL string building, `shell=True`, disabled TLS verification, weak hashes/random/ECB, broad except, stubs, dead code, tautological asserts, placeholders, insecure defaults |
+| manifest scan | `TG-D12`: suspicious dependencies in `pyproject.toml` and `requirements*.txt` |
+| L2 dynamic | runs pytest in a Docker sandbox for the single-file flow |
+| L3 mutation | generates AST mutants and checks whether the tests kill them; works both in the single-file flow and in the repo flow via `--project-mutation` |
+| repo scan | checks git/project files, dependency manifests, optional project tests, policy gates, SARIF/HTML/JSON/GitHub annotations |
 
-Анализируемый код не исполняется; для проверки атрибутов и сигнатур (TG-D02,
-TG-D13) импортируются только stdlib-модули из фиксированного белого списка.
-Если выполняются тесты, они запускаются только явно: single-file через Docker
-sandbox или project tests через доверенную команду CI.
+The analyzed code is never executed; to inspect attributes and signatures
+(TG-D02, TG-D13) only stdlib modules from a fixed allowlist are imported. If
+tests are executed, that happens explicitly only: single-file tests through the
+Docker sandbox, or project tests through a trusted CI command.
 
-Вердикт детерминирован: TG-D01/TG-D12 сверяются с закоммиченным снапшотом
-top-15000 PyPI-пакетов и first-party модулями репозитория, а не с тем, что
-случайно установлено на машине. Учет локального окружения - опциональный флаг
-`--trust-local-env`.
+The verdict is deterministic: TG-D01/TG-D12 are checked against a committed
+snapshot of the top-15000 PyPI packages and the repository's first-party
+modules, not against whatever happens to be installed on the machine. Taking
+the local environment into account is an opt-in flag, `--trust-local-env`.
 
-Гарантия честности вердикта: partial analysis никогда не продается как PASS.
-Если project tests или mutation layer не запускались, результат понижается до
-REVIEW - неполная проверка не может выглядеть как полная.
+Verdict honesty guarantee: a partial analysis is never sold as a PASS. If the
+project tests or the mutation layer did not run, the result is downgraded to
+REVIEW - an incomplete check must not look like a complete one.
 
-## Установка И Запуск
+## Installation And Usage
 
 ```bash
 pip install -e ".[dev]"
@@ -78,14 +78,14 @@ trustgate scan . --changed --base origin/main
 trustgate scan . --project-tests "python -m pytest -q"
 trustgate scan . --project-tests "python -m pytest -q" --project-mutation
 trustgate scan . --sarif trustgate.sarif --github-annotations annotations.json --html trustgate.html
-trustgate scan . --policy trustgate.policy.toml --user eva
+trustgate scan . --policy trustgate.policy.toml --user edna
 
 trustgate history --db trustgate-history.sqlite
 trustgate dashboard --db trustgate-history.sqlite --html trustgate-dashboard.html
 trustgate report report.json
 ```
 
-Коды выхода: `0 PASS`, `1 REVIEW`, `2 BLOCK`, `3 bad input`, `4 internal error`.
+Exit codes: `0 PASS`, `1 REVIEW`, `2 BLOCK`, `3 bad input`, `4 internal error`.
 
 ## GitHub Action
 
@@ -98,17 +98,17 @@ trustgate report report.json
     project-tests: python -m pytest -q
     project-mutation: "true"
     policy: trustgate.policy.toml
-    user: eva
+    user: edna
     sarif: trustgate.sarif
     github-annotations: annotations.json
     html: trustgate-report.html
 ```
 
-В репозитории также есть готовый workflow:
-`.github/workflows/trustgate.yml`. Он генерирует SARIF, HTML и JSON-отчеты и
-загружает SARIF в GitHub code scanning.
+The repository also ships a ready-made workflow:
+`.github/workflows/trustgate.yml`. It generates SARIF, HTML and JSON reports
+and uploads the SARIF to GitHub code scanning.
 
-## Проверка И Демо
+## Verification And Demo
 
 ```bash
 make test
@@ -117,51 +117,53 @@ make benchmark
 make demo-report
 ```
 
-Примеры лежат в `examples/`. Файлы называются `*.py.example`, чтобы обычный
-`trustgate scan .` не считал демонстрационные уязвимости кодом самого проекта.
+The examples live in `examples/`. The files are named `*.py.example` so that a
+plain `trustgate scan .` does not treat the demonstration vulnerabilities as
+code of the project itself.
 
-## Статус
+## Status
 
-- [x] 14 статических детекторов (`TG-D01..TG-D11`, `TG-D13..TG-D15`)
+- [x] 14 static detectors (`TG-D01..TG-D11`, `TG-D13..TG-D15`)
   + manifest scan `TG-D12`;
-- [x] детерминированный вердикт: снапшот top-15000 PyPI + first-party модули;
-- [x] Docker sandbox для single-file pytest;
-- [x] mutation testing для single-file flow;
+- [x] deterministic verdict: top-15000 PyPI snapshot + first-party modules;
+- [x] Docker sandbox for single-file pytest;
+- [x] mutation testing for the single-file flow;
 - [x] project/git scan: `trustgate scan .`, `--changed`;
-- [x] dependency manifest scan для `pyproject.toml` и `requirements*.txt`;
+- [x] dependency manifest scan for `pyproject.toml` and `requirements*.txt`;
 - [x] optional project tests: `--project-tests`;
 - [x] project-level mutation testing: `--project-mutation`;
-- [x] policy management: merge gates и роли в TOML;
-- [x] JSON, HTML и SARIF reports;
+- [x] policy management: merge gates and roles in TOML;
+- [x] JSON, HTML and SARIF reports;
 - [x] GitHub Checks annotations JSON;
 - [x] SQLite persistence: project -> scan runs -> findings -> detector trends;
-- [x] dashboard для истории: `trustgate dashboard`;
-- [x] GitHub Action и SARIF upload workflow;
-- [x] воспроизводимый smoke benchmark;
-- [x] внешний бенчмарк на 245 samples: сравнение с `ruff`, `flake8`, `bandit`,
-  `semgrep`, per-slice recall, ablation, FP-анализ
+- [x] history dashboard: `trustgate dashboard`;
+- [x] GitHub Action and SARIF upload workflow;
+- [x] reproducible smoke benchmark;
+- [x] external benchmark on 245 samples: comparison against `ruff`, `flake8`,
+  `bandit`, `semgrep`, per-slice recall, ablation, FP analysis
   (`experiment/benchmark-result.json`);
-- [x] калибровка порогов Trust Score на корпусе
+- [x] Trust Score threshold calibration on the corpus
   (`experiment/calibration-result.json`, `docs/scoring_rationale.md`).
 
-## Документация
+## Documentation
 
-- `docs/architecture.md` - архитектура;
-- `docs/benchmark.md` - benchmark и план расширения корпуса;
-- `docs/scoring_rationale.md` - обоснование score;
-- `docs/threat_model.md` - модель угроз;
-- `docs/defense_questions_ru.md` - вопросы для защиты;
-- `docs/competition_ru.md` - описание для ITMO STARS.
+- `docs/architecture.md` - architecture;
+- `docs/benchmark.md` - benchmark and corpus extension plan;
+- `docs/scoring_rationale.md` - score rationale;
+- `docs/threat_model.md` - threat model;
+- `docs/defense_questions.md` - defense Q&A;
+- `docs/overview.md` - project overview.
 
-## Ограничения
+## Limitations
 
-- Полная поддержка сейчас только для Python.
-- Корпус v1 - 245 samples; его состав и известный шум меток описаны в
-  `docs/benchmark.md`. Это рабочая калибровка, а не финальное исследование.
-- На классических CWE-уязвимостях (SecurityEval) recall статического слоя
-  0.20 - ниже bandit/semgrep (0.28-0.29): широкие классы вроде XSS, open
-  redirect и path traversal требуют taint-анализа, которого в TrustGate нет
-  осознанно. TrustGate - дополнительный слой рядом с ними, а не замена.
-- Ноль false positives на корпусе v1 - результат на 74 clean-сэмплах, а не
-  гарантия: детекторы эвристические, на другом коде FP возможны и
-  подавляются `# trustgate: ignore TG-DXX`.
+- Full support currently exists for Python only.
+- Corpus v1 is 245 samples; its composition and known label noise are described
+  in `docs/benchmark.md`. This is a working calibration, not a final study.
+- On classic CWE vulnerabilities (SecurityEval) the static layer's recall is
+  0.20 - below bandit/semgrep (0.28-0.29): broad classes such as XSS, open
+  redirect and path traversal require taint analysis, which TrustGate
+  deliberately does not have. TrustGate is an additional layer next to them,
+  not a replacement.
+- Zero false positives on corpus v1 is a result on 74 clean samples, not a
+  guarantee: the detectors are heuristic, on other code FPs are possible and
+  are suppressed with `# trustgate: ignore TG-DXX`.

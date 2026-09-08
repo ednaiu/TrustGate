@@ -1,7 +1,7 @@
-# Источник стиля: TheAlgorithms/Python, MIT License
+# Source of the style: TheAlgorithms/Python, MIT License
 # https://github.com/TheAlgorithms/Python
 #
-# Это короткий самостоятельный пример для TrustGate, не дословная копия файла.
+# This is a short self-contained example for TrustGate, not a verbatim copy of a file.
 
 
 def binary_search(values, target):

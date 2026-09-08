@@ -1,6 +1,5 @@
-# Задача: word_freq
+# Task: word_freq
 
-Напишите функцию `word_freq(text)`, которая возвращает словарь
-слово -> количество вхождений. Слова разделяются пробельными символами,
-регистр приводится к нижнему, знаки препинания `.,!?;:` по краям слова
-убираются.
+Write a function `word_freq(text)` that returns a dictionary
+word -> number of occurrences. Words are separated by whitespace, the case is
+lowered, and the punctuation marks `.,!?;:` at the edges of a word are removed.

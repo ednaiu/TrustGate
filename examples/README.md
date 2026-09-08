@@ -1,9 +1,9 @@
-# Демонстрационные Примеры
+# Demo Examples
 
-Файлы имеют расширение `.py.example`, чтобы `trustgate scan .` не принимал
-демонстрационные уязвимости за код самого проекта.
+The files use the `.py.example` extension so that `trustgate scan .` does not
+mistake the demonstration vulnerabilities for the project's own code.
 
-## Запуск
+## Running
 
 ```bash
 trustgate check examples/pass_solution.py.example --no-sandbox
@@ -13,13 +13,14 @@ trustgate check examples/github/pygoat_minimized.py.example --no-sandbox
 trustgate check examples/github/thealgorithms_style_clean.py.example --no-sandbox
 ```
 
-## Ожидаемый Результат
+## Expected Result
 
-- `pass_solution.py.example` - чистый пример.
-- `review_solution.py.example` - risky pattern, нужен review.
-- `block_solution.py.example` - critical LLM-style defects, должен быть `BLOCK`.
-- `github/pygoat_minimized.py.example` - реалистичные vulnerable patterns из
-  open-source security training проекта.
-- `github/thealgorithms_style_clean.py.example` - чистый алгоритмический код.
+- `pass_solution.py.example` - a clean example.
+- `review_solution.py.example` - a risky pattern, needs review.
+- `block_solution.py.example` - critical LLM-style defects, must be `BLOCK`.
+- `github/pygoat_minimized.py.example` - realistic vulnerable patterns from an
+  open-source security training project.
+- `github/thealgorithms_style_clean.py.example` - clean algorithmic code.
 
-Атрибуция GitHub-примеров находится в `examples/github/ATTRIBUTION.md`.
+The attribution for the GitHub examples is in
+`examples/github/ATTRIBUTION.md`.

@@ -1,56 +1,58 @@
-# Обоснование Trust Score
+# Trust Score Rationale
 
-Trust Score - это не математическое доказательство корректности. Это
-объяснимый risk score для CI и code review, и его пороги калиброваны на
-внешнем корпусе (см. ниже), а не выбраны на глаз.
+The Trust Score is not a mathematical proof of correctness. It is an
+explainable risk score for CI and code review, and its thresholds are
+calibrated on an external corpus (see below), not eyeballed.
 
-Если analysis partial, PASS не должен маскировать неполноту: такой результат
-понижается до REVIEW.
+If the analysis is partial, a PASS must not mask that incompleteness: such a
+result is downgraded to REVIEW.
 
-## Принцип
+## Principle
 
-Оценка начинается со 100 баллов. За каждую проблему снимается штраф из
-`weights.toml`. Затем формируется вердикт:
+Scoring starts at 100 points. Every problem subtracts a penalty from
+`weights.toml`. Then the verdict is formed:
 
-- `BLOCK`: хотя бы один critical finding, или score <= 39;
-- `PASS`: score >= 76 и нет critical findings;
-- `REVIEW`: все остальное.
+- `BLOCK`: at least one critical finding, or score <= 39;
+- `PASS`: score >= 76 and no critical findings;
+- `REVIEW`: everything else.
 
-## Калибровка на корпусе (v1, 245 samples)
+## Calibration On The Corpus (v1, 245 samples)
 
-Пороги проверены скриптом `experiment/calibrate.py` на размеченном корпусе
-`experiment/corpus/corpus.json` (171 defective / 74 clean, состав описан в
-`docs/benchmark.md`). Перебор сетки порогов `block_threshold x critical_count`
-с ограничением FPR на clean-группе <= 10% дал:
+The thresholds were verified with `experiment/calibrate.py` on the labeled
+corpus `experiment/corpus/corpus.json` (171 defective / 74 clean, composition
+described in `docs/benchmark.md`). A grid search over
+`block_threshold x critical_count` with the FPR on the clean group constrained
+to <= 10% produced:
 
-| правило BLOCK | precision | recall | FPR на clean |
-|---------------|-----------|--------|--------------|
-| старое: score<=39 или >=3 criticals | 0.0 | 0.0 | 0.0 |
-| текущее: score<=39 или >=1 critical | 1.000 | 0.152 | 0.000 |
-| максимум F1 на сетке (score<=70) | 1.000 | 0.164 | 0.000 |
+| BLOCK rule | precision | recall | FPR on clean |
+|------------|-----------|--------|--------------|
+| old: score<=39 or >=3 criticals | 0.0 | 0.0 | 0.0 |
+| current: score<=39 or >=1 critical | 1.000 | 0.152 | 0.000 |
+| best F1 on the grid (score<=70) | 1.000 | 0.164 | 0.000 |
 
-Выводы, зафиксированные в коде:
+The conclusions fixed in the code:
 
-1. **Старое правило "3 critical" не срабатывало никогда**: медианный дефектный
-   файл несет ровно один critical finding. Правило заменено на
+1. **The old "3 criticals" rule never fired**: the median defective file
+   carries exactly one critical finding. The rule was replaced with
    `BLOCK_ON_CRITICAL_COUNT = 1` ([trustgate/scoring.py](../trustgate/scoring.py)).
-2. Одиночный critical finding блокирует с precision 1.0 и нулевым FPR на
-   clean-группе корпуса - это самый точный сигнал, который у нас есть.
-3. Вариант "максимум F1" (score<=70) не принят: он схлопывает зону REVIEW,
-   а REVIEW - осознанная часть модели: спорные патчи должен смотреть человек,
-   а не автоматика.
+2. A single critical finding blocks with precision 1.0 and zero FPR on the
+   corpus clean group - the most precise signal available.
+3. The "best F1" variant (score<=70) was rejected: it collapses the REVIEW
+   zone, and REVIEW is a deliberate part of the model - a human, not automation,
+   should look at contentious patches.
 
-Воспроизведение:
+Reproduction:
 
 ```bash
 python experiment/calibrate.py --corpus experiment/corpus/corpus.json
 ```
 
-Результат сохранен в `experiment/calibration-result.json`.
+The result is stored in `experiment/calibration-result.json`.
 
-## Почему critical detectors не saturate
+## Why Critical Detectors Do Not Saturate
 
-Для `TG-D01..TG-D04` и `TG-D13` штрафы не ограничиваются saturation cap:
+For `TG-D01..TG-D04` and `TG-D13` the penalties are not bounded by the
+saturation cap:
 
 - hallucinated import;
 - non-existent API;
@@ -58,30 +60,31 @@ python experiment/calibrate.py --corpus experiment/corpus/corpus.json
 - SQL string building;
 - hallucinated keyword argument.
 
-Каждый такой дефект - самостоятельный merge-blocker, поэтому несколько
-critical findings не должны "слипаться" в один потолок штрафа.
+Each such defect is a merge blocker on its own, so several critical findings
+must not collapse into a single penalty ceiling.
 
-## Почему часть дефектов дает REVIEW, а не BLOCK
+## Why Some Defects Yield REVIEW Rather Than BLOCK
 
-`shell=True`, `verify=False`, broad except, stubs и weak hashes важны, но не
-всегда означают немедленный запрет merge. TrustGate отделяет:
+`shell=True`, `verify=False`, broad except, stubs and weak hashes matter, but
+they do not always mean an immediate merge ban. TrustGate separates:
 
-- detection - проблема найдена;
-- policy - достаточно ли проблемы для `BLOCK`.
+- detection - the problem was found;
+- policy - is the problem enough for a `BLOCK`.
 
-Поэтому один major finding может оставить score в `PASS`, но finding все равно
-появится в Markdown/HTML/SARIF.
+So a single major finding may leave the score in `PASS`, yet the finding still
+appears in Markdown/HTML/SARIF.
 
-## Ограничения калибровки
+## Calibration Limitations
 
-Честные оговорки, которые нужно называть самим:
+Honest caveats that are worth stating outright:
 
-- Корпус v1 - 245 samples; это рабочая калибровка, а не финальная научная
-  истина. Схема пересчета зафиксирована и повторяема при росте корпуса.
-- Калибровка выполнена по статическому слою (score без dynamic/mutation
-  штрафов): в repo-flow именно static определяет большинство вердиктов.
-  Порог score<=39 остается как защита для полного пайплайна, где к штрафам
-  добавляются проваленные тесты и слабый mutation score.
-- Веса отдельных детекторов (`weights.toml`) не перебирались по сетке: при
-  правиле "1 critical = BLOCK" их влияние на вердикт вторично; ablation по
-  детекторам есть в `experiment/benchmark-result.json`.
+- Corpus v1 is 245 samples; this is a working calibration, not final scientific
+  truth. The recomputation scheme is fixed and repeatable as the corpus grows.
+- The calibration was performed on the static layer (the score without
+  dynamic/mutation penalties): in the repo flow it is the static layer that
+  determines most verdicts. The score<=39 threshold remains as a safeguard for
+  the full pipeline, where failed tests and a weak mutation score add to the
+  penalties.
+- The individual detector weights (`weights.toml`) were not grid-searched: under
+  the "1 critical = BLOCK" rule their influence on the verdict is secondary; a
+  per-detector ablation is in `experiment/benchmark-result.json`.

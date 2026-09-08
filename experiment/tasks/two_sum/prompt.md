@@ -1,8 +1,8 @@
-# Задача: two_sum
+# Task: two_sum
 
-Напишите функцию `two_sum(nums, target)`, которая возвращает индексы `(i, j)`
-двух чисел из `nums`, сумма которых равна `target`.
+Write a function `two_sum(nums, target)` that returns the indices `(i, j)` of
+two numbers from `nums` whose sum equals `target`.
 
-Если такой пары нет, функция должна вернуть `None`.
+If there is no such pair, the function must return `None`.
 
-Один элемент нельзя использовать дважды.
+One element may not be used twice.

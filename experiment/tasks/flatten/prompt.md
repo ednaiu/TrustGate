@@ -1,4 +1,4 @@
-# Задача: flatten
+# Task: flatten
 
-Напишите функцию `flatten(items)`, которая разворачивает произвольно
-вложенные списки в один плоский список, сохраняя порядок элементов.
+Write a function `flatten(items)` that unfolds arbitrarily nested lists into a
+single flat list, preserving the order of the elements.

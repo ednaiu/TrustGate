@@ -1,4 +1,4 @@
-# Задача: is_palindrome
+# Task: is_palindrome
 
-Напишите функцию `is_palindrome(text)`, которая проверяет, является ли
-строка палиндромом, учитывая только буквы и цифры и игнорируя регистр.
+Write a function `is_palindrome(text)` that checks whether the string is a
+palindrome, taking into account only letters and digits and ignoring case.

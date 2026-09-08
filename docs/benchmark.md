@@ -1,13 +1,14 @@
-# Бенчмарк И Оценка Качества
+# Benchmark And Quality Evaluation
 
-TrustGate не опирается на голословное утверждение "обычные линтеры пропускают
-дефекты генеративного кода". В проекте два уровня оценки: регрессионный smoke
-benchmark и внешний benchmark на корпусе из 245 samples с полным provenance.
-Все цифры ниже воспроизводятся из закоммиченных данных и скриптов.
+TrustGate does not rely on the bare claim that "ordinary linters miss defects
+of generated code". The project has two evaluation levels: a regression smoke
+benchmark and an external benchmark on a corpus of 245 samples with full
+provenance. Every number below is reproducible from the committed data and
+scripts.
 
-## Внешний Бенчмарк: Результаты (corpus v1, 245 samples)
+## External Benchmark: Results (corpus v1, 245 samples)
 
-Запуск:
+Run:
 
 ```bash
 python experiment/benchmark_external.py \
@@ -15,112 +16,116 @@ python experiment/benchmark_external.py \
   --out experiment/benchmark-result.json
 ```
 
-Критерий: инструмент "пометил" файл, если выдал хотя бы один finding - то есть
-как merge-gate он завернул бы этот патч.
+Criterion: a tool "flagged" a file if it produced at least one finding - that
+is, as a merge gate it would have rejected this patch.
 
-| инструмент | precision | recall | F1 | FPR на clean |
-|------------|-----------|--------|-----|--------------|
+| tool | precision | recall | F1 | FPR on clean |
+|------|-----------|--------|-----|--------------|
 | **TrustGate (static)** | **1.000** | 0.357 | **0.526** | **0.0%** |
 | bandit 1.9.4 | 0.962 | 0.298 | 0.455 | 2.7% |
 | semgrep 1.168.0 (config auto) | 1.000 | 0.263 | 0.417 | 0.0% |
 | ruff 0.15.20 | 0.973 | 0.211 | 0.346 | 1.4% |
 | flake8 7.3.0 | 0.841 | 0.801 | 0.820 | **35.1%** |
 
-Как это читать честно:
+How to read this honestly:
 
-- Среди инструментов, пригодных как gate (FPR < 5%), TrustGate дает лучший F1
-  при нулевых false positives на clean-группе.
-- flake8 формально впереди по recall, но помечает **каждый третий чистый
-  production-файл** - как merge-gate он непригоден, это style-линтер.
-- Ноль FP - результат на 74 clean-сэмплах корпуса v1, а не гарантия для
-  любого кода.
+- Among the tools usable as a gate (FPR < 5%), TrustGate gives the best F1 with
+  zero false positives on the clean group.
+- flake8 is formally ahead on recall, but it flags **every third clean
+  production file** - as a merge gate it is unusable; it is a style linter.
+- Zero FP is a result on the 74 clean samples of corpus v1, not a guarantee for
+  arbitrary code.
 
-## Recall По Срезам: Где Чьи Слепые Зоны
+## Recall By Slice: Whose Blind Spot Is Where
 
-| срез корпуса (defective) | TrustGate | bandit | semgrep | ruff |
+| corpus slice (defective) | TrustGate | bandit | semgrep | ruff |
 |--------------------------|-----------|--------|---------|------|
-| SecurityEval, 130 CWE-уязвимостей от Copilot | 0.200 | 0.285 | 0.292 | 0.215 |
-| Профиль генеративного кода, 41 (hallucinated imports/kwargs, stubs, placeholders, eval) | **0.854** | 0.341 | 0.171 | 0.195 |
+| SecurityEval, 130 CWE vulnerabilities from Copilot | 0.200 | 0.285 | 0.292 | 0.215 |
+| Generated-code profile, 41 (hallucinated imports/kwargs, stubs, placeholders, eval) | **0.854** | 0.341 | 0.171 | 0.195 |
 
-Это главный результат позиционирования:
+This is the key positioning result:
 
-- На классических CWE-уязвимостях (LDAP/XXE/SSRF и т.п.) bandit и semgrep
-  сильнее - TrustGate **не претендует заменить их** и должен работать рядом.
-  Широкие классы (XSS, open redirect, path traversal) требуют taint-анализа,
-  которого в TrustGate осознанно нет.
-- На дефект-профиле генеративного кода TrustGate находит 85% дефектов, а
-  лучшие baseline - максимум 34%. Этот класс дефектов - слепая зона
-  существующих инструментов, и именно его TrustGate закрывает.
-- Оставшиеся 15% на втором срезе - инъекции off-by-one: логические ошибки
-  статически не ловятся by design, для них есть L2/L3 (tests + mutation).
+- On classic CWE vulnerabilities (LDAP/XXE/SSRF and the like) bandit and semgrep
+  are stronger - TrustGate **does not claim to replace them** and should work
+  next to them. Broad classes (XSS, open redirect, path traversal) require taint
+  analysis, which TrustGate deliberately does not have.
+- On the generated-code defect profile TrustGate finds 85% of the defects,
+  while the best baseline reaches at most 34%. This defect class is the blind
+  spot of existing tools, and it is exactly what TrustGate covers.
+- The remaining 15% on the second slice are off-by-one injections: logical
+  errors are not caught statically by design; L2/L3 (tests + mutation) exist for
+  them.
 
-## Состав Корпуса (245 samples, 171 defective / 74 clean)
+## Corpus Composition (245 samples, 171 defective / 74 clean)
 
-| источник | размер | label | как получен |
-|----------|--------|-------|-------------|
-| SecurityEval (MSR 2022) | 130 | defective | код, реально сгенерированный GitHub Copilot для security-чувствительных промптов; цитирование: Siddiq & Santos, DOI 10.1145/3549035.3561184 |
-| trustgate-tasks | 46 | clean | решения 23 задач из `experiment/tasks/`, сгенерированные claude-haiku и claude-sonnet через CLI; label присвоен прогоном reference-тестов (все 46 прошли) |
-| injected-defects | 41 | defective | те же LLM-решения с одной детерминированной инъекцией дефекта (`inject_defects.py`, seed 42) - единственный синтетический срез, покрывает профиль генеративного кода |
-| clean-oss | 28 | clean | файлы из requests, flask, click, fastapi и др., пиненные на release-теги (`experiment/corpus/clean_oss/sources.json`) - проба false positives |
+| source | size | label | how it was obtained |
+|--------|------|-------|---------------------|
+| SecurityEval (MSR 2022) | 130 | defective | code actually generated by GitHub Copilot for security-sensitive prompts; citation: Siddiq & Santos, DOI 10.1145/3549035.3561184 |
+| trustgate-tasks | 46 | clean | solutions to 23 tasks from `experiment/tasks/`, generated by claude-haiku and claude-sonnet through the CLI; the label was assigned by running the reference tests (all 46 passed) |
+| injected-defects | 41 | defective | the same LLM solutions with one deterministic defect injection (`inject_defects.py`, seed 42) - the only synthetic slice, covering the generated-code profile |
+| clean-oss | 28 | clean | files from requests, flask, click, fastapi and others, pinned to release tags (`experiment/corpus/clean_oss/sources.json`) - a false positive probe |
 
-Как собрать корпус заново:
+How to rebuild the corpus:
 
 ```bash
 git clone https://github.com/s2e-lab/SecurityEval /tmp/SecurityEval
-python experiment/generate_corpus.py           # нужен claude CLI или API-ключи
+python experiment/generate_corpus.py           # requires the claude CLI or API keys
 python experiment/build_corpus.py --securityeval /tmp/SecurityEval
 ```
 
-Известные ограничения разметки (называем сами):
+Known labeling limitations (stated by us, not for others to find):
 
-- Label "defective" для SecurityEval унаследован от конструкции датасета:
-  промпты провоцируют уязвимость, но отдельные ответы Copilot могли оказаться
-  безопасными. Это шум меток, общий для всех сравниваемых инструментов.
-- Срез injected-defects синтетический (мутации реального LLM-кода) - стандартная
-  методика ground truth, полностью помечен в provenance.
-- 46 из 74 clean-сэмплов - решения простых алгоритмических задач; сложный
-  "чистый" LLM-код в корпусе v1 не представлен.
+- The "defective" label for SecurityEval is inherited from the dataset's
+  construction: the prompts provoke a vulnerability, but individual Copilot
+  answers may have turned out safe. This is label noise shared by all compared
+  tools.
+- The injected-defects slice is synthetic (mutations of real LLM code) - a
+  standard ground truth methodology, fully marked in the provenance.
+- 46 of the 74 clean samples are solutions to simple algorithmic tasks; complex
+  "clean" LLM code is not represented in corpus v1.
 
-## Ablation По Детекторам
+## Per-Detector Ablation
 
-`experiment/benchmark-result.json` содержит ablation: как падает recall при
-отключении каждого детектора. Топ вкладов на corpus v1: TG-D03
+`experiment/benchmark-result.json` contains an ablation: how much recall drops
+when each detector is disabled. Top contributions on corpus v1: TG-D03
 (eval/exec/os.system/yaml.load, -9.9% recall), TG-D09 (stubs, -5.3%), TG-D08
-(broad except, -4.7%), TG-D01 (hallucinated imports, -4.1%), TG-D13 и TG-D14
-(по -3.5%). Детекторы LLM-профиля (D01, D02, D09, D13, D14) в сумме дают
-около половины recall.
+(broad except, -4.7%), TG-D01 (hallucinated imports, -4.1%), TG-D13 and TG-D14
+(-3.5% each). The LLM-profile detectors (D01, D02, D09, D13, D14) together give
+about half of the recall.
 
 ## False Positive Analysis
 
-Блок `false_positive_analysis` в JSON перечисляет каждый ложно помеченный
-clean-сэмпл с инструментом и detector ids. У TrustGate на corpus v1 их **0**.
-Этот ноль - заработанный: первая версия давала 3 FP, все от сабчека
-"TODO/FIXME в комментарии" (зрелый OSS-код полон долгоживущих TODO -
-`fastapi/param_functions.py`, `requests/hooks.py`, `urllib3/exceptions.py`).
-Сабчек удален: реальные заглушки ловятся по телу функции (TG-D09), строки
-"TODO: implement" - через TG-D14, а recall от удаления не изменился. Это
-пример рабочего цикла false positive analysis -> правка правил. На коде вне
-корпуса FP остаются возможными и подавляются `# trustgate: ignore TG-DXX`.
+The `false_positive_analysis` block in the JSON lists every falsely flagged
+clean sample with the tool and the detector ids. For TrustGate on corpus v1
+there are **0**. That zero was earned: the first version produced 3 FPs, all
+from the "TODO/FIXME in a comment" subcheck (mature OSS code is full of
+long-lived TODOs - `fastapi/param_functions.py`, `requests/hooks.py`,
+`urllib3/exceptions.py`). The subcheck was removed: real stubs are caught by the
+function body (TG-D09), "TODO: implement" strings through TG-D14, and recall did
+not change after the removal. This is an example of a working false positive
+analysis -> rule fix cycle. On code outside the corpus FPs remain possible and
+are suppressed with `# trustgate: ignore TG-DXX`.
 
-## Smoke-Бенчмарк (регрессия детекторов)
+## Smoke Benchmark (detector regression)
 
-Данные: `experiment/static_benchmark_cases.json` (15 кейсов, по одному на
-детектор + clean-кейсы). Запуск:
+Data: `experiment/static_benchmark_cases.json` (15 cases, one per detector plus
+clean cases). Run:
 
 ```bash
 python experiment/static_benchmark.py
 ```
 
-Он отвечает на один вопрос: каждый детектор имеет воспроизводимый пример и не
-разваливается при изменениях кода. Метрики на нем (precision/recall 1.0) - это
-регрессионная проверка механики, а не исследовательское утверждение; для
-исследовательских цифр см. внешний бенчмарк выше.
+It answers one question: every detector has a reproducible example and does not
+fall apart when the code changes. Its metrics (precision/recall 1.0) are a
+regression check of the mechanics, not a research claim; for research numbers
+see the external benchmark above.
 
-## Формат Корпуса
+## Corpus Format
 
-JSON или JSONL, каждый sample: `id`, `label`, `code`, `source` (provenance).
-Допустимые defective labels: `defective`, `bad`, `unsafe`, `vulnerable`,
-`hallucinated`, `1`, `true`. Все остальные считаются clean.
+JSON or JSONL, each sample: `id`, `label`, `code`, `source` (provenance).
+Accepted defective labels: `defective`, `bad`, `unsafe`, `vulnerable`,
+`hallucinated`, `1`, `true`. Everything else counts as clean.
 
-Если корпус меньше 100 samples, runner возвращает `"status": "needs_corpus"` -
-маленькая синтетика не должна выдаваться за полноценное исследование.
+If the corpus has fewer than 100 samples, the runner returns
+`"status": "needs_corpus"` - a small synthetic set must not be passed off as a
+full study.

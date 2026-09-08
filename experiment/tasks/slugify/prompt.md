@@ -1,5 +1,5 @@
-# Задача: slugify
+# Task: slugify
 
-Напишите функцию `slugify(title)`, которая приводит строку к URL-слагу:
-нижний регистр, последовательности не-букв/не-цифр заменяются одним
-дефисом, дефисы по краям убираются.
+Write a function `slugify(title)` that turns a string into a URL slug: lower
+case, runs of non-letter/non-digit characters replaced by a single hyphen,
+hyphens at the edges removed.

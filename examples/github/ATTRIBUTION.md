@@ -1,26 +1,26 @@
-# Атрибуция GitHub-примеров
+# Attribution Of The GitHub Examples
 
-Файлы в этой папке нужны для демонстрации TrustGate на реалистичных паттернах
-из открытых репозиториев. Они специально имеют расширение `.py.example`, чтобы
-`trustgate scan .` не считал их кодом самого проекта.
+The files in this folder exist to demonstrate TrustGate on realistic patterns
+from open repositories. They deliberately use the `.py.example` extension so
+that `trustgate scan .` does not treat them as the project's own code.
 
 ## PyGoat
 
-- Репозиторий: https://github.com/adeyosemanputra/pygoat
-- Лицензия: MIT License
-- Использование: `pygoat_minimized.py.example` содержит минимизированное
-  воспроизведение паттернов уязвимого учебного приложения. Это не полная копия
-  исходного файла.
+- Repository: https://github.com/adeyosemanputra/pygoat
+- License: MIT License
+- Usage: `pygoat_minimized.py.example` contains a minimized reproduction of the
+  patterns of the vulnerable training application. It is not a full copy of the
+  source file.
 
 ## TheAlgorithms/Python
 
-- Репозиторий: https://github.com/TheAlgorithms/Python
-- Лицензия: MIT License
-- Использование: `thealgorithms_style_clean.py.example` содержит короткий
-  самостоятельный пример алгоритмического кода в стиле репозитория. Это не
-  дословная копия исходного файла.
+- Repository: https://github.com/TheAlgorithms/Python
+- License: MIT License
+- Usage: `thealgorithms_style_clean.py.example` contains a short self-contained
+  example of algorithmic code in the repository's style. It is not a verbatim
+  copy of the source file.
 
-## Как проверять
+## How To Check
 
 ```bash
 trustgate check examples/github/pygoat_minimized.py.example --no-sandbox

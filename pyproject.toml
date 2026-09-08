@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "trustgate"
 version = "1.5.0"
 description = "Trust scoring for Python code with a generated-code defect profile: static checks, sandboxed tests, mutation analysis"
-authors = [{ name = "Eva Iusupova" }]
+authors = [{ name = "Edna Iusupova", email = "edna.iusupova@universite-paris-saclay.fr" }]
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [

@@ -1,10 +1,10 @@
-# Задача: run-length encoding
+# Task: run-length encoding
 
-Напишите две функции:
+Write two functions:
 
-- `encode(text)` - сжимает строку через run-length encoding;
-- `decode(encoded)` - восстанавливает исходную строку.
+- `encode(text)` - compresses a string with run-length encoding;
+- `decode(encoded)` - restores the original string.
 
-Пример: строка `"aaabbc"` кодируется как `"a3b2c1"`.
+Example: the string `"aaabbc"` is encoded as `"a3b2c1"`.
 
-Пустая строка должна кодироваться и декодироваться как пустая строка.
+An empty string must encode and decode as an empty string.

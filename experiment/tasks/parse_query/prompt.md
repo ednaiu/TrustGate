@@ -1,5 +1,5 @@
-# Задача: parse_query
+# Task: parse_query
 
-Напишите функцию `parse_query(query)`, которая разбирает строку запроса
-вида `"a=1&b=2"` в словарь. Пары без `=` игнорируются, значения не
-декодируются. Пустая строка дает пустой словарь.
+Write a function `parse_query(query)` that parses a query string of the form
+`"a=1&b=2"` into a dictionary. Pairs without `=` are ignored, values are not
+decoded. An empty string yields an empty dictionary.

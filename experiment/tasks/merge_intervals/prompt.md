@@ -1,5 +1,5 @@
-# Задача: merge_intervals
+# Task: merge_intervals
 
-Напишите функцию `merge_intervals(intervals)`, которая объединяет
-пересекающиеся интервалы. На входе список пар `[start, end]`,
-на выходе отсортированный список объединенных интервалов.
+Write a function `merge_intervals(intervals)` that merges overlapping intervals.
+The input is a list of `[start, end]` pairs, the output is a sorted list of
+merged intervals.

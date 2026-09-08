@@ -1,4 +1,4 @@
-# Задача: dedup
+# Task: dedup
 
-Напишите функцию `dedup(items)`, которая убирает дубликаты из списка,
-сохраняя порядок первых вхождений.
+Write a function `dedup(items)` that removes duplicates from a list, preserving
+the order of first occurrences.

@@ -200,8 +200,8 @@ def render_dashboard(db_path, title: str = "TrustGate dashboard") -> str:
         "</tr>"
         for row in trends
     )
-    empty_scans = "<tr><td colspan='7'>История проверок пока пуста.</td></tr>"
-    empty_trends = "<tr><td colspan='4'>Findings пока не сохранены.</td></tr>"
+    empty_scans = "<tr><td colspan='7'>No scans recorded yet.</td></tr>"
+    empty_trends = "<tr><td colspan='4'>No findings stored yet.</td></tr>"
 
     return f"""<!doctype html>
 <html lang="ru">
@@ -232,21 +232,21 @@ def render_dashboard(db_path, title: str = "TrustGate dashboard") -> str:
 <main>
   <h1>{html.escape(title)}</h1>
   <section class="summary">
-    <div class="metric"><div class="label">Последний verdict</div><div class="value {verdict_class}">{html.escape((latest or {}).get("verdict", "-"))}</div></div>
-    <div class="metric"><div class="label">Последний score</div><div class="value">{html.escape(str((latest or {}).get("score", "-")))}</div></div>
-    <div class="metric"><div class="label">Всего проверок</div><div class="value">{len(rows)}</div></div>
-    <div class="metric"><div class="label">Findings в последней проверке</div><div class="value">{html.escape(str((latest or {}).get("findings", "-")))}</div></div>
+    <div class="metric"><div class="label">Latest verdict</div><div class="value {verdict_class}">{html.escape((latest or {}).get("verdict", "-"))}</div></div>
+    <div class="metric"><div class="label">Latest score</div><div class="value">{html.escape(str((latest or {}).get("score", "-")))}</div></div>
+    <div class="metric"><div class="label">Total scans</div><div class="value">{len(rows)}</div></div>
+    <div class="metric"><div class="label">Findings in latest scan</div><div class="value">{html.escape(str((latest or {}).get("findings", "-")))}</div></div>
   </section>
 
-  <h2>История проверок</h2>
+  <h2>Scan history</h2>
   <table>
-    <thead><tr><th>ID</th><th>Время</th><th>Проект</th><th>Verdict</th><th>Score</th><th>Findings</th><th>Syntax</th></tr></thead>
+    <thead><tr><th>ID</th><th>Time</th><th>Project</th><th>Verdict</th><th>Score</th><th>Findings</th><th>Syntax</th></tr></thead>
     <tbody>{scan_rows or empty_scans}</tbody>
   </table>
 
-  <h2>Динамика качества по детекторам</h2>
+  <h2>Quality trends by detector</h2>
   <table>
-    <thead><tr><th>Detector</th><th>Severity</th><th>Количество</th><th>Штраф</th></tr></thead>
+    <thead><tr><th>Detector</th><th>Severity</th><th>Count</th><th>Penalty</th></tr></thead>
     <tbody>{trend_rows or empty_trends}</tbody>
   </table>
 </main>

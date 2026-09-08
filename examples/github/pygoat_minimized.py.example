@@ -1,7 +1,7 @@
-# Источник паттернов: PyGoat, MIT License
+# Source of the patterns: PyGoat, MIT License
 # https://github.com/adeyosemanputra/pygoat
 #
-# Это минимизированное воспроизведение для TrustGate, а не копия файла PyGoat.
+# This is a minimized reproduction for TrustGate, not a copy of a PyGoat file.
 
 import sqlite3
 import subprocess

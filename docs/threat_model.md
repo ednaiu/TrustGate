@@ -1,48 +1,49 @@
-# Модель Угроз
+# Threat Model
 
-TrustGate анализирует код, который может быть ошибочным или небезопасным.
-Поэтому parsing, execution и reporting разделены.
+TrustGate analyzes code that may be faulty or unsafe. That is why parsing,
+execution and reporting are separated.
 
-## Активы
+## Assets
 
-- CI runner или рабочая машина разработчика.
-- Исходный код репозитория.
-- Secrets и credentials в CI.
-- Целостность TrustGate-отчета.
+- The CI runner or the developer's machine.
+- The repository source code.
+- Secrets and credentials in CI.
+- The integrity of the TrustGate report.
 
-## Риски
+## Risks
 
-1. Проверяемый код пытается выйти в сеть.
-2. Проверяемый код пытается читать или менять файлы вне рабочей области.
-3. Проверяемый код потребляет слишком много CPU/RAM/processes.
-4. Ошибка тестов неверно классифицируется.
-5. Partial report принимается за полный verdict.
-6. Dependency manifest содержит hallucinated или typo-squatted package.
+1. The analyzed code tries to reach the network.
+2. The analyzed code tries to read or modify files outside the workspace.
+3. The analyzed code consumes too much CPU/RAM/processes.
+4. A test failure is misclassified.
+5. A partial report is taken for a complete verdict.
+6. A dependency manifest contains a hallucinated or typo-squatted package.
 
-## Текущие Контроли
+## Current Controls
 
-- Static layer только парсит AST и не импортирует проверяемый код; для
-  TG-D02/TG-D13 импортируются исключительно stdlib-модули из фиксированного
-  белого списка (`ATTR_CHECK_MODULES`).
-- Вердикт TG-D01/TG-D12 детерминирован: снапшот PyPI в репозитории, локальное
-  окружение учитывается только по явному `--trust-local-env`.
-- Project scan проверяет `pyproject.toml` и `requirements*.txt`.
-- Single-file dynamic layer запускается в Docker без сети.
-- Docker runner использует CPU/RAM/PID limits.
-- Docker runner использует `--cap-drop ALL`, `no-new-privileges`,
-  `--read-only` и tmpfs для `/tmp`.
-- Project tests запускаются только явно через доверенный `--project-tests`.
-- Missing Docker дает `partial: true`.
-- Mutation отключается без sandbox.
+- The static layer only parses the AST and never imports the analyzed code; for
+  TG-D02/TG-D13 exclusively stdlib modules from a fixed allowlist
+  (`ATTR_CHECK_MODULES`) are imported.
+- The TG-D01/TG-D12 verdict is deterministic: a PyPI snapshot lives in the
+  repository, and the local environment is taken into account only with an
+  explicit `--trust-local-env`.
+- The project scan checks `pyproject.toml` and `requirements*.txt`.
+- The single-file dynamic layer runs in Docker without network access.
+- The Docker runner applies CPU/RAM/PID limits.
+- The Docker runner uses `--cap-drop ALL`, `no-new-privileges`,
+  `--read-only` and tmpfs for `/tmp`.
+- Project tests run only explicitly, via a trusted `--project-tests`.
+- Missing Docker yields `partial: true`.
+- Mutation is disabled without a sandbox.
 
-## Ограничения
+## Limitations
 
-- Docker isolation зависит от host Docker daemon.
-- Project test command задается владельцем CI и выполняется в Docker sandbox
-  над временной копией репозитория.
-- Seccomp profile и rootless Docker остаются roadmap.
+- Docker isolation depends on the host Docker daemon.
+- The project test command is defined by the CI owner and is executed in a
+  Docker sandbox over a temporary copy of the repository.
+- A seccomp profile and rootless Docker remain on the roadmap.
 
 ## Roadmap Hardening
 
 - rootless Docker;
-- custom seccomp profile.
+- a custom seccomp profile.

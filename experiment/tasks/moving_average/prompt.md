@@ -1,5 +1,5 @@
-# Задача: moving_average
+# Task: moving_average
 
-Напишите функцию `moving_average(values, window)`, которая возвращает список
-скользящих средних по окну `window`. Если `window` больше длины списка или
-меньше 1, поднимайте `ValueError`.
+Write a function `moving_average(values, window)` that returns the list of
+moving averages over the window `window`. If `window` is larger than the list
+length or smaller than 1, raise `ValueError`.

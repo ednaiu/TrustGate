@@ -1,4 +1,4 @@
-# Задача: caesar_cipher
+# Task: caesar_cipher
 
-Напишите функцию `caesar(text, shift)`, которая сдвигает латинские буквы
-на `shift` позиций с сохранением регистра; прочие символы не меняются.
+Write a function `caesar(text, shift)` that shifts Latin letters by `shift`
+positions preserving the case; other characters stay unchanged.

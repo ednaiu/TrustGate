@@ -1,5 +1,5 @@
-# Задача: safe_get
+# Task: safe_get
 
-Напишите функцию `safe_get(data, path, default=None)`, которая достает
-значение из вложенных словарей по списку ключей `path`. Если какого-то
-ключа нет или промежуточное значение не словарь, вернуть `default`.
+Write a function `safe_get(data, path, default=None)` that extracts a value from
+nested dictionaries by the list of keys `path`. If some key is missing or an
+intermediate value is not a dictionary, return `default`.

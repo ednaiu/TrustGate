@@ -45,5 +45,5 @@ def test_render_dashboard(tmp_path):
 
     html = history.render_dashboard(db)
 
-    assert "История проверок" in html
+    assert "Scan history" in html
     assert "REVIEW" in html

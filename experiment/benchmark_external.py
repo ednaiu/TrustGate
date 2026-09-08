@@ -1,9 +1,9 @@
-"""Внешний benchmark: TrustGate против ruff, flake8, bandit, semgrep.
+"""External benchmark: TrustGate against ruff, flake8, bandit, semgrep.
 
-Каждый sample записывается в файл sample_<i>.py, после чего каждый baseline
-запускается один раз на всю директорию (per-file запуск semgrep занял бы часы),
-а его вывод разбирается в вердикт по каждому файлу. "Инструмент пометил файл" =
-инструмент как merge-gate завернул бы этот патч.
+Each sample is written to a file sample_<i>.py, after which every baseline is
+run once over the whole directory (a per-file semgrep run would take hours) and
+its output is parsed into a per-file verdict. "The tool flagged the file" =
+the tool, used as a merge gate, would have rejected this patch.
 """
 import argparse
 import json

@@ -1,5 +1,5 @@
-# Задача: roman_to_int
+# Task: roman_to_int
 
-Напишите функцию `roman_to_int(s)`, которая преобразует римское число
-(I, V, X, L, C, D, M, включая вычитательную запись IV, IX, XL, XC, CD, CM)
-в целое.
+Write a function `roman_to_int(s)` that converts a Roman numeral
+(I, V, X, L, C, D, M, including the subtractive forms IV, IX, XL, XC, CD, CM)
+into an integer.

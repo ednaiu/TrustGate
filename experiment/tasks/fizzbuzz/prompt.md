@@ -1,5 +1,5 @@
-# Задача: fizzbuzz
+# Task: fizzbuzz
 
-Напишите функцию `fizzbuzz(n)`, которая возвращает список строк для чисел
-от 1 до n: "Fizz" для кратных 3, "Buzz" для кратных 5, "FizzBuzz" для
-кратных 15, иначе само число строкой.
+Write a function `fizzbuzz(n)` that returns a list of strings for the numbers
+from 1 to n: "Fizz" for multiples of 3, "Buzz" for multiples of 5, "FizzBuzz"
+for multiples of 15, otherwise the number itself as a string.

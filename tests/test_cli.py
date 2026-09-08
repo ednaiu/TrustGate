@@ -152,7 +152,7 @@ def test_dashboard_cli(tmp_path, capsys):
     assert main(["scan", str(tmp_path), "--save-history", str(db)]) == 1
     assert main(["dashboard", "--db", str(db), "--html", str(html)]) == 0
     assert "TrustGate dashboard written" in capsys.readouterr().out
-    assert "История проверок" in html.read_text()
+    assert "Scan history" in html.read_text()
 
 
 def test_determinism(tmp_path):

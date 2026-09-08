@@ -1,4 +1,4 @@
-# Задача: binary_search
+# Task: binary_search
 
-Напишите функцию `binary_search(items, target)`, которая возвращает индекс
-элемента `target` в отсортированном списке `items` или -1, если его нет.
+Write a function `binary_search(items, target)` that returns the index of the
+element `target` in the sorted list `items`, or -1 if it is not there.

@@ -1,5 +1,5 @@
-# Задача: group_anagrams
+# Task: group_anagrams
 
-Напишите функцию `group_anagrams(words)`, которая группирует слова-анаграммы.
-Верните список групп (списков слов); порядок слов внутри группы - как во
-входе, порядок групп - по первому вхождению.
+Write a function `group_anagrams(words)` that groups anagram words. Return a
+list of groups (lists of words); the order of words inside a group is as in the
+input, the order of groups follows the first occurrence.

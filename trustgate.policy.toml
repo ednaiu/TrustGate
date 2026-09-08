@@ -1,4 +1,4 @@
-# Пример строгой политики для CI/конкурсного демо.
+# Example of a strict policy for CI and demo runs.
 
 saturation = 35
 
@@ -44,7 +44,7 @@ permissions = ["read", "comment", "approve_review"]
 [roles.maintainer]
 permissions = ["read", "comment", "override_block", "manage_policy"]
 
-[users.eva]
+[users.edna]
 role = "maintainer"
 
 [users.reviewer_demo]

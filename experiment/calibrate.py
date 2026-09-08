@@ -1,12 +1,12 @@
-"""Калибровка порогов Trust Score на размеченном корпусе.
+"""Trust Score threshold calibration on the labeled corpus.
 
-Вопрос калибровки: при каких порогах BLOCK-решение статического слоя
-максимизирует F1 на defective samples при ограничении на false positive rate
-по clean-группе. Отдельно печатается таблица verdict-распределений, чтобы
-docs/scoring_rationale.md ссылался на воспроизводимый расчет, а не на
-магические числа.
+The calibration question: at which thresholds does the static layer's BLOCK
+decision maximize F1 on defective samples while keeping the false positive rate
+on the clean group bounded. A verdict-distribution table is printed separately
+so that docs/scoring_rationale.md can cite a reproducible computation instead of
+magic numbers.
 
-Запуск:
+Usage:
     python experiment/calibrate.py --corpus experiment/corpus/corpus.json
 """
 import argparse

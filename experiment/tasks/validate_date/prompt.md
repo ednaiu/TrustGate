@@ -1,5 +1,5 @@
-# Задача: validate_date
+# Task: validate_date
 
-Напишите функцию `validate_date(value)`, которая проверяет строку формата
-`YYYY-MM-DD` и возвращает `True`, если это корректная календарная дата
-(включая проверку високосных лет), иначе `False`.
+Write a function `validate_date(value)` that checks a string in the format
+`YYYY-MM-DD` and returns `True` if it is a valid calendar date (including the
+leap year check), otherwise `False`.

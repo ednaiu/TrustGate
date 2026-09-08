@@ -1,5 +1,5 @@
-# Задача: chunk_list
+# Task: chunk_list
 
-Напишите функцию `chunk(items, size)`, которая режет список на куски
-длиной `size` (последний может быть короче). При `size <= 0` функция
-должна поднимать `ValueError`.
+Write a function `chunk(items, size)` that splits a list into chunks of length
+`size` (the last one may be shorter). For `size <= 0` the function must raise
+`ValueError`.

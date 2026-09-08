@@ -1,4 +1,4 @@
-# Задача: transpose
+# Task: transpose
 
-Напишите функцию `transpose(matrix)`, которая транспонирует прямоугольную
-матрицу (список списков).
+Write a function `transpose(matrix)` that transposes a rectangular matrix
+(a list of lists).

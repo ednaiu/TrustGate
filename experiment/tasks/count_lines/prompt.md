@@ -1,5 +1,5 @@
-# Задача: count_lines
+# Task: count_lines
 
-Напишите функцию `count_lines(path)`, которая возвращает количество
-непустых строк в текстовом файле по пути `path` (кодировка utf-8).
-Строки из одних пробелов считаются пустыми.
+Write a function `count_lines(path)` that returns the number of non-empty lines
+in the text file at `path` (utf-8 encoding). Lines consisting only of spaces
+count as empty.
